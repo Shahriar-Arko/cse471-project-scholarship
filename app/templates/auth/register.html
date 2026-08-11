@@ -6,6 +6,7 @@
     <!-- Floating Orbs -->
     <div class="absolute top-10 right-20 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
     <div class="absolute bottom-10 left-20 w-80 h-80 bg-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+    
     <div class="relative w-full max-w-xl animate-fade-in" x-data="{ role: 'student', password: '', checkStrength() { 
         let score = 0;
         if(this.password.length > 7) score++;
@@ -20,17 +21,36 @@
                 <h1 class="text-2xl font-bold text-white tracking-tight">Create an Account</h1>
                 <p class="text-indigo-100 mt-1 text-sm">Join the global academic network</p>
             </div>
-            <!-- Role Tabs -->
-            <div class="flex p-1 bg-white/10 rounded-xl mb-8 backdrop-blur-md">
-                <button @click="role = 'student'" :class="role === 'student' ? 'bg-white text-indigo-600 shadow-md' : 'text-white hover:bg-white/5'" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300">
-                    I'm a Student
+
+            <!-- FIXED: Role Toggle Switch (3 Columns) -->
+            <div class="flex p-1 bg-white/10 rounded-xl mb-8 relative backdrop-blur-md">
+                <button type="button" @click="role = 'student'"
+                    class="flex-1 py-2 text-xs font-medium rounded-lg transition-all z-10"
+                    :class="role === 'student' ? 'text-indigo-900 shadow-sm' : 'text-white hover:text-indigo-100'">
+                    Student
                 </button>
-                <button @click="role = 'professor'" :class="role === 'professor' ? 'bg-white text-indigo-600 shadow-md' : 'text-white hover:bg-white/5'" class="flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-300">
-                    I'm a Professor
+                <button type="button" @click="role = 'professor'"
+                    class="flex-1 py-2 text-xs font-medium rounded-lg transition-all z-10"
+                    :class="role === 'professor' ? 'text-indigo-900 shadow-sm' : 'text-white hover:text-indigo-100'">
+                    Professor
                 </button>
+                <button type="button" @click="role = 'evaluator'"
+                    class="flex-1 py-2 text-xs font-medium rounded-lg transition-all z-10"
+                    :class="role === 'evaluator' ? 'text-indigo-900 shadow-sm' : 'text-white hover:text-indigo-100'">
+                    Evaluator
+                </button>
+                
+                <!-- Sliding background pill -->
+                <div class="absolute top-1 bottom-1 w-[calc(33.33%-4px)] bg-white rounded-lg transition-all duration-300 ease-in-out"
+                    :class="{
+                        'left-1': role === 'student',
+                        'left-[calc(33.33%+2px)]': role === 'professor',
+                        'left-[calc(66.66%+2px)]': role === 'evaluator'
+                    }"></div>
             </div>
+
             <form method="POST" action="{{ url_for('auth.register') }}" class="space-y-4">
-                <input type="hidden" name="role" x-model="role">
+                <input type="hidden" name="role" :value="role">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Common Fields -->
@@ -58,6 +78,7 @@
                         <input type="password" name="confirm_password" required class="block w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-indigo-200/60 focus:outline-none focus:ring-2 focus:ring-white/50" placeholder="••••••••">
                     </div>
                 </div>
+                
                 <!-- Professor specific fields (animated reveal) -->
                 <div x-show="role === 'professor'" x-collapse x-cloak class="space-y-4 pt-2">
                     <div class="h-px w-full bg-white/20 my-2"></div>
@@ -75,6 +96,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="pt-4">
                     <button type="submit" class="w-full py-2.5 px-4 bg-white text-indigo-600 font-semibold rounded-xl shadow-lg hover:bg-indigo-50 hover:scale-[1.02] hover:shadow-xl transition-all duration-300">
                         Create Account

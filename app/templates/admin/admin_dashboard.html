@@ -57,6 +57,25 @@
 
         </div>
 
+
+
+                <!-- Pending Evaluators Card -->
+        <div class="bg-[#1e293b]/50 border border-amber-500/30 rounded-2xl p-6 relative overflow-hidden backdrop-blur-xl">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                    ACTION REQUIRED ↗
+                </span>
+                <div class="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <span class="text-amber-400">⏳</span>
+                </div>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-1">Pending Evaluators</h3>
+            <div class="text-4xl font-black text-amber-400 mb-4">{{ pending_evaluators_count }}</div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Review and approve essay evaluator registration requests to grant them platform access.
+            </p>
+        </div>
+
         <!-- Platform Oversight Banner -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 backdrop-blur-md">
             <h2 class="text-xl font-bold text-white mb-2">Platform Oversight Controls</h2>
