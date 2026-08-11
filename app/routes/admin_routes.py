@@ -157,3 +157,93 @@ def admin_logout():
     if getattr(current_user, 'role', '') == 'admin':
         logout_user()
     return redirect(url_for('admin.admin_login'))
+
+
+
+@admin_bp.route('/pending-approvals')
+@login_required
+def pending_approvals():
+    if getattr(current_user, 'role', '') != 'admin':
+        return redirect(url_for('admin.admin_dashboard'))
+    
+    from app.models.user import User
+    pending_users = User.objects(is_approved=False)
+    
+    return render_template('admin/pending_approvals.html', pending_users=pending_users)
+
+@admin_bp.route('/approve-user/<user_id>', methods=['POST'])
+@login_required
+def approve_user(user_id):
+    if getattr(current_user, 'role', '') != 'admin':
+        return redirect(url_for('admin.admin_dashboard'))
+
+    from app.models.user import User
+    user = User.objects(id=user_id).first()
+    if user:
+        user.is_approved = True
+        user.save()
+        flash(f'Successfully approved account for {user.full_name} ({user.role.capitalize()}).', 'success')
+        
+    return redirect(url_for('admin.pending_approvals'))
+
+
+
+
+
+# ... (Keep existing imports and top part of the file)
+
+@admin_bp.route('/dashboard')
+@login_required
+def admin_dashboard():
+    if getattr(current_user, 'role', '') != 'admin':
+        flash('Unauthorized access.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    from app.models.user import User
+    from app.models.professor import Professor
+    from app.models.scholarship import Scholarship
+    from app.models.evaluator import Evaluator # <-- Import Evaluator
+
+    total_students = User.objects().count()
+    total_professors = Professor.objects().count()
+    total_scholarships = Scholarship.objects().count()
+
+    # --- NEW: Fetch Pending Evaluators ---
+    pending_evaluators = Evaluator.objects(is_approved=False)
+    pending_evaluators_count = pending_evaluators.count()
+
+    # Pass actual data lists to template
+    recent_students = User.objects().order_by('-id')[:10]
+    recent_professors = Professor.objects().order_by('-id')[:10]
+    recent_scholarships = Scholarship.objects()[:15]
+
+    return render_template('dashboard/admin_dashboard.html', 
+                           students_count=total_students, 
+                           professors_count=total_professors, 
+                           scholarships_count=total_scholarships,
+                           pending_evaluators=pending_evaluators, # <-- Pass to UI
+                           pending_evaluators_count=pending_evaluators_count, # <-- Pass to UI
+                           recent_students=recent_students,
+                           recent_professors=recent_professors,
+                           scholarships=recent_scholarships)
+
+# --- NEW: Approval Route ---
+@admin_bp.route('/approve-evaluator/<evaluator_id>', methods=['POST'])
+@login_required
+def approve_evaluator(evaluator_id):
+    if getattr(current_user, 'role', '') != 'admin':
+        return redirect(url_for('admin.admin_dashboard'))
+
+    from app.models.evaluator import Evaluator
+    evaluator = Evaluator.objects(id=evaluator_id).first()
+    
+    if evaluator:
+        evaluator.is_approved = True
+        evaluator.save()
+        flash(f'Evaluator {evaluator.full_name} has been approved to log in!', 'success')
+    else:
+        flash('Evaluator not found.', 'error')
+        
+    return redirect(url_for('admin.admin_dashboard'))
+
+# ... (Keep existing delete routes and logout route)

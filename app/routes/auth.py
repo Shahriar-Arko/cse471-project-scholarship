@@ -13,7 +13,6 @@ auth_bp = Blueprint('auth', __name__)
 
 RESTRICTED_BRACU_DOMAIN = "@g.bracu.ac.bd"
 
-# --- NEW: BACKGROUND OTP EMAIL FUNCTION ---
 def send_otp_email_async(user_email, otp_code):
     try:
         sender_email = os.environ.get('MAIL_USERNAME')
@@ -32,7 +31,7 @@ def send_otp_email_async(user_email, otp_code):
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #f8fafc;">
             <h2 style="color: #4f46e5; text-align: center;">ScholarMatch Security</h2>
             <p style="color: #334155; font-size: 16px;">Hello,</p>
-            <p style="color: #334155; font-size: 16px;">Please use the verification code below to securely log into your student account:</p>
+            <p style="color: #334155; font-size: 16px;">Please use the verification code below to securely log into your account:</p>
             <div style="background-color: #ffffff; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0; border: 2px dashed #cbd5e1;">
                 <span style="font-size: 32px; font-weight: bold; color: #0f172a; letter-spacing: 4px;">{otp_code}</span>
             </div>
@@ -46,7 +45,6 @@ def send_otp_email_async(user_email, otp_code):
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(sender_email, sender_password)
             smtp.send_message(msg)
-            print(f"OTP email successfully sent to {user_email}")
             
     except Exception as e:
         print(f"Background OTP email failed: {e}")
@@ -62,34 +60,33 @@ def login():
         role = request.form.get('role', 'student')
         remember = True if request.form.get('remember') else False
 
-        # Domain checks based on role
         if role == 'professor' and not email.endswith(RESTRICTED_BRACU_DOMAIN):
             flash(f"Only official '{RESTRICTED_BRACU_DOMAIN}' emails can log in as a Professor.", 'error')
             return render_template('auth/login.html')
 
         if role == 'student' and email.endswith(RESTRICTED_BRACU_DOMAIN):
-            flash(f"'{RESTRICTED_BRACU_DOMAIN}' emails are reserved for Professors. Please log in as a Professor or use a personal email.", 'error')
+            flash(f"'{RESTRICTED_BRACU_DOMAIN}' emails are reserved for Professors.", 'error')
             return render_template('auth/login.html')
 
         user, error = authenticate_user(email, password, role)
         if user:
-            # --- NEW 2-STEP VERIFICATION LOGIC ---
-            if role == 'student':
-                # Generate a 6-digit code
+            # Check Admin Approval for Evaluators and Professors
+            if getattr(user, 'is_approved', True) is False:
+                flash('Your profile request is currently pending Admin approval.', 'warning')
+                return redirect(url_for('auth.login'))
+            
+            # OTP trigger for Students and Evaluators
+            if role in ['student', 'evaluator']:
                 otp_code = str(random.randint(100000, 999999))
-                
-                # Temporarily store login intent in the secure session
                 session['pending_otp'] = otp_code
                 session['pending_user_id'] = str(user.id)
                 session['pending_remember'] = remember
                 
-                # Send the email in the background
                 threading.Thread(target=send_otp_email_async, args=(user.email, otp_code)).start()
                 
                 flash('Please check your email for the 6-digit verification code.', 'info')
                 return redirect(url_for('auth.verify_otp'))
             else:
-                # Professor logs in instantly (Bypasses OTP)
                 login_user(user, remember=remember)
                 return redirect(url_for('dashboard'))
         else:
@@ -97,13 +94,12 @@ def login():
 
     return render_template('auth/login.html')
 
-# --- NEW VERIFICATION ROUTE ---
+
 @auth_bp.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
         
-    # Prevent direct access to this page if they haven't submitted the login form
     if 'pending_user_id' not in session or 'pending_otp' not in session:
         flash('Session expired. Please log in again.', 'error')
         return redirect(url_for('auth.login'))
@@ -111,16 +107,12 @@ def verify_otp():
     if request.method == 'POST':
         entered_otp = request.form.get('otp', '').strip()
         
-        # Verify the entered code matches the session code
         if entered_otp == session.get('pending_otp'):
             user = User.objects(id=session.get('pending_user_id')).first()
             if user:
                 remember = session.get('pending_remember', False)
-                
-                # Fully log the user in now
                 login_user(user, remember=remember)
                 
-                # Clear the temporary session data to maintain security
                 session.pop('pending_otp', None)
                 session.pop('pending_user_id', None)
                 session.pop('pending_remember', None)
@@ -135,6 +127,7 @@ def verify_otp():
 
     return render_template('auth/verify_otp.html')
 
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -148,7 +141,6 @@ def register():
         institution = request.form.get('institution')
         department = request.form.get('department')
 
-        # Domain checks based on role
         if role == 'professor' and not email.endswith(RESTRICTED_BRACU_DOMAIN):
             flash(f"Professors must register using an official email ending in '{RESTRICTED_BRACU_DOMAIN}'.", 'error')
             return render_template('auth/register.html')
@@ -158,8 +150,15 @@ def register():
             return render_template('auth/register.html')
 
         user, error = register_user(email, password, full_name, role, institution, department)
+        
         if user:
-            # --- FIXED AUTO-LOGIN SECURITY FLAW ---
+            # Set to False to require admin approval
+            if role in ['evaluator', 'professor']:
+                user.is_approved = False
+                user.save()
+                flash('Registration successful! Your request is pending Admin approval.', 'info')
+                return redirect(url_for('auth.login'))
+
             flash('Registration complete! Please log in to securely access your account.', 'success')
             return redirect(url_for('auth.login'))
         else:
@@ -167,11 +166,13 @@ def register():
 
     return render_template('auth/register.html')
 
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
 
 @auth_bp.route('/google/login')
 def google_login():
@@ -227,12 +228,17 @@ def google_callback():
         return redirect(url_for('auth.login'))
 
     if role == 'student' and email.endswith(RESTRICTED_BRACU_DOMAIN):
-        flash(f"Access denied. '{RESTRICTED_BRACU_DOMAIN}' emails are restricted from logging in as a Student. Please select Professor role.", 'error')
+        flash(f"Access denied. '{RESTRICTED_BRACU_DOMAIN}' emails are restricted from logging in as a Student.", 'error')
         return redirect(url_for('auth.login'))
     
     try:
         user = find_or_create_google_user(google_user_info, role)
-        # Google Auth acts as its own 2SV, so we securely log them directly in here
+        
+        # Make sure users created via Google OAuth respect the admin approval rule 
+        if role in ['evaluator', 'professor'] and getattr(user, 'is_approved', True) is False:
+            flash('Your profile is currently pending Admin approval.', 'warning')
+            return redirect(url_for('auth.login'))
+
         login_user(user, remember=True)
         flash(f"Welcome, {user.full_name}!", "success")
         return redirect(url_for('dashboard'))

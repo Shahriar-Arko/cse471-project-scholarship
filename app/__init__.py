@@ -11,7 +11,6 @@ def create_app(config_name='development'):
         'host': 'mongodb+srv://Admin:admin123@cluster0.1jknqf7.mongodb.net/scholarship_matcher?retryWrites=true&w=majority'
     }
 
-    # Initialize extensions
     db.init_app(app)
     login_manager.init_app(app)
     
@@ -23,7 +22,6 @@ def create_app(config_name='development'):
     login_manager.login_view = 'auth.login'
     login_manager.login_message_category = 'info'
 
-    # Auto-seed a Master Admin if one doesn't exist
     with app.app_context():
         from app.models.admin import Admin
         admin_email = os.environ.get('ADMIN_EMAIL', 'admin@scholarmatch.com')
@@ -31,15 +29,12 @@ def create_app(config_name='development'):
             hashed_pw = bcrypt.generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'SecureAdmin123!')).decode('utf-8')
             Admin(email=admin_email, password=hashed_pw, full_name="System Administrator", role="admin").save()
 
-    # Register Blueprints
     from .routes.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
 
-    # This line automatically loads the app/routes/student/__init__.py file!
     from .routes.student import student_bp
     app.register_blueprint(student_bp)
 
-    # REGISTER MODULAR ADMIN PACKAGE
     from .routes.admin import admin_bp
     app.register_blueprint(admin_bp)
 
@@ -54,6 +49,8 @@ def create_app(config_name='development'):
             return redirect(url_for('admin.admin_dashboard'))
         if current_user.role == 'professor':
             return redirect(url_for('professor_dashboard'))
+        if current_user.role == 'evaluator':
+            return redirect(url_for('evaluator_dashboard'))
         return redirect(url_for('student_dashboard'))
         
     @app.route('/dashboard/student')
@@ -69,5 +66,12 @@ def create_app(config_name='development'):
         if current_user.role != 'professor':
             return redirect(url_for('dashboard'))
         return render_template('dashboard/professor_dashboard.html')
+
+    @app.route('/dashboard/evaluator')
+    @login_required
+    def evaluator_dashboard():
+        if current_user.role != 'evaluator':
+            return redirect(url_for('dashboard'))
+        return render_template('dashboard/evaluator_dashboard.html')
 
     return app
