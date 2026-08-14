@@ -1,7 +1,12 @@
-from flask import Flask, redirect, url_for, render_template
+from flask import Flask, app, redirect, url_for, render_template, request, flash
 from .extensions import db, login_manager, bcrypt
 from flask_login import login_required, current_user
 import os
+from flask import Flask, redirect, url_for, render_template, request, flash
+from flask import send_from_directory
+
+
+
 
 def create_app(config_name='development'):
     app = Flask(__name__)
@@ -73,5 +78,92 @@ def create_app(config_name='development'):
         if current_user.role != 'professor':
             return redirect(url_for('dashboard'))
         return render_template('dashboard/professor_dashboard.html')
+
+    @app.route('/dashboard/evaluator')
+    @login_required
+    def evaluator_dashboard():
+        if current_user.role != 'evaluator':
+            return redirect(url_for('dashboard'))
+            
+        from app.models.essay import EssaySubmission
+        
+        # Fetch all essays assigned to this specific evaluator object
+        assigned_essays = EssaySubmission.objects(evaluator=current_user).order_by('-created_at')
+        
+        return render_template(
+            'evaluators/evaluator_dashboard.html', 
+            assigned_essays=assigned_essays
+        )
+
+
+
+    @app.route('/evaluate-essay/<essay_id>', methods=['POST'])
+    @login_required
+    def evaluate_essay(essay_id):
+        if current_user.role != 'evaluator':
+            flash('Unauthorized access.', 'error')
+            return redirect(url_for('dashboard'))
+            
+        from app.models.essay import EssaySubmission
+        essay = EssaySubmission.objects(id=essay_id, evaluator=current_user.id).first()
+        
+        if not essay:
+            flash('Essay not found.', 'error')
+            return redirect(url_for('evaluator_dashboard'))
+            
+        # Get data from the form
+        score = request.form.get('score')
+        feedback = request.form.get('feedback')
+        
+        if score and feedback:
+            essay.score = int(score)
+            essay.feedback = feedback
+            essay.status = 'reviewed'
+            essay.save()
+            flash('Evaluation submitted successfully!', 'success')
+            
+        return redirect(url_for('evaluator_dashboard'))
+
+    @app.route('/evaluator/edit-profile', methods=['GET', 'POST'])
+    @login_required
+    def edit_evaluator_profile():
+        if current_user.role != 'evaluator':
+            return redirect(url_for('dashboard'))
+            
+        if request.method == 'POST':
+            # Get data from the form and update the database
+            current_user.full_name = request.form.get('full_name')
+            current_user.university = request.form.get('university')
+            current_user.major = request.form.get('major')
+            current_user.experience = request.form.get('experience')
+            current_user.nationality = request.form.get('nationality')
+            current_user.save()
+            
+            flash('Profile successfully updated!', 'success')
+            return redirect(url_for('evaluator_dashboard'))
+            
+        return render_template('evaluators/edit_profile.html')
+
+
+    @app.route('/download-essay/<essay_id>')
+    @login_required
+    def download_essay(essay_id):
+        # Security check: only the assigned evaluator can download it
+        if current_user.role != 'evaluator':
+            flash('Unauthorized access.', 'error')
+            return redirect(url_for('dashboard'))
+            
+        from app.models.essay import EssaySubmission
+        essay = EssaySubmission.objects(id=essay_id, evaluator=current_user.id).first()
+        
+        if not essay:
+            flash('Essay not found.', 'error')
+            return redirect(url_for('evaluator_dashboard'))
+            
+        upload_dir = os.path.join(app.root_path, 'static', 'uploads', 'essays')
+        
+        # as_attachment=False allows PDFs to preview in the browser!
+        # DOCX files will automatically download.
+        return send_from_directory(upload_dir, essay.file_path, as_attachment=False, download_name=essay.original_filename)
 
     return app

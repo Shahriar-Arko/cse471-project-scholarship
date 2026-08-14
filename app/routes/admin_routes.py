@@ -202,15 +202,15 @@ def admin_dashboard():
     from app.models.user import User
     from app.models.professor import Professor
     from app.models.scholarship import Scholarship
-    from app.models.evaluator import Evaluator # <-- Import Evaluator
+    from app.models.evaluator import Evaluator # <-- MUST IMPORT EVALUATOR
 
     total_students = User.objects().count()
     total_professors = Professor.objects().count()
     total_scholarships = Scholarship.objects().count()
 
-    # --- NEW: Fetch Pending Evaluators ---
-    pending_evaluators = Evaluator.objects(is_approved=False)
-    pending_evaluators_count = pending_evaluators.count()
+    # --- Fetch Pending Evaluators ---
+    pending_evaluators = list(Evaluator.objects(is_approved=False))
+    pending_evaluators_count = len(pending_evaluators)
 
     # Pass actual data lists to template
     recent_students = User.objects().order_by('-id')[:10]
@@ -221,8 +221,8 @@ def admin_dashboard():
                            students_count=total_students, 
                            professors_count=total_professors, 
                            scholarships_count=total_scholarships,
-                           pending_evaluators=pending_evaluators, # <-- Pass to UI
-                           pending_evaluators_count=pending_evaluators_count, # <-- Pass to UI
+                           pending_evaluators=pending_evaluators, # <-- PASSING DATA TO UI
+                           pending_evaluators_count=pending_evaluators_count, # <-- PASSING DATA TO UI
                            recent_students=recent_students,
                            recent_professors=recent_professors,
                            scholarships=recent_scholarships)

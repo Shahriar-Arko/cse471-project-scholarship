@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Evaluator Dashboard - ScholarMatch{% endblock %}
+
+{% block content %}
+<!-- Initialize Alpine.js state to hide the requests by default, and manage modals -->
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-8" x-data="{ showRequests: false, showEvalModal: false, showFeedbackModal: false, activeEssayId: '', activeEssayTitle: '', activeScore: '', activeFeedback: '' }">
+    <div class="max-w-6xl mx-auto space-y-8">
+        
+        <!-- Header with Update Profile Button -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white tracking-tight">Evaluator Workspace</h1>
+                <p class="text-slate-400 text-sm mt-1">Welcome back, {{ current_user.full_name }}</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <a href="{{ url_for('edit_evaluator_profile') }}" class="px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 shadow-lg">
+                    <span>⚙️</span> Update Profile
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl text-sm font-semibold transition-all">
+                    Sign Out
+                </a>
+            </div>
+        </div>
+
+        <!-- Profile Overview Card -->
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-md">
+            <h2 class="text-xl font-bold text-white mb-4">Your Profile Details</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+                <div>
+                    <span class="block text-slate-500 mb-1 uppercase tracking-wider text-xs font-bold">University</span>
+                    <span class="text-slate-300 font-medium">{{ current_user.university or 'Not provided' }}</span>
+                </div>
+                <div>
+                    <span class="block text-slate-500 mb-1 uppercase tracking-wider text-xs font-bold">Major</span>
+                    <span class="text-slate-300 font-medium">{{ current_user.major or 'Not provided' }}</span>
+                </div>
+                <div>
+                    <span class="block text-slate-500 mb-1 uppercase tracking-wider text-xs font-bold">Nationality</span>
+                    <span class="text-slate-300 font-medium">{{ current_user.nationality or 'Not provided' }}</span>
+                </div>
+                <div>
+                    <span class="block text-slate-500 mb-1 uppercase tracking-wider text-xs font-bold">Experience</span>
+                    <span class="text-slate-300 font-medium">{{ current_user.experience or 'Not provided' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- ADMIN-STYLE METRIC CARDS                   -->
+        <!-- ========================================== -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+            
+            <!-- Clickable Essay Requests Card -->
+            <button @click="showRequests = !showRequests" class="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-indigo-500/50 rounded-3xl p-8 shadow-2xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden text-left w-full focus:outline-none">
+                <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all"></div>
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20" x-text="showRequests ? 'Close Directory ↙' : 'Open Directory ↗'"></span>
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xl">📥</div>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Essay Requests</h3>
+                <div class="text-5xl font-black text-indigo-400 my-4">{{ assigned_essays|length }}</div>
+                <p class="text-slate-400 text-xs">View all pending and reviewed essay submissions from students. Click to expand.</p>
+            </button>
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- EXPANDABLE ESSAY REQUESTS MASTER CARD      -->
+        <!-- ========================================== -->
+        <div x-show="showRequests" x-collapse x-cloak>
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 backdrop-blur-md mt-4 shadow-2xl">
+                
+                <!-- Section Header -->
+                <div class="flex items-center gap-3 mb-8 border-b border-slate-800/50 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl shadow-inner">
+                        📝
+                    </div>
+                    <h2 class="text-2xl font-bold text-white">Student Submissions Directory</h2>
+                </div>
+                
+                <!-- Grid of Individual Essays -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for essay in assigned_essays %}
+                    
+                    <!-- INDIVIDUAL ESSAY CARD -->
+                    <div class="bg-black/30 border {% if essay.status == 'pending' %}border-amber-500/40{% else %}border-emerald-500/40{% endif %} rounded-2xl p-6 shadow-xl flex flex-col hover:-translate-y-1 transition-transform duration-300">
+                        
+                        <div class="flex justify-between items-start mb-4">
+                            {% if essay.status == 'pending' %}
+                                <span class="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-full border border-amber-500/20">Needs Review</span>
+                            {% else %}
+                                <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">Reviewed</span>
+                            {% endif %}
+                            <span class="text-slate-400 text-xs font-medium">{{ essay.created_at.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-white mb-2 leading-tight">{{ essay.title }}</h3>
+                        
+                        <div class="flex items-center gap-2 mb-6 text-sm text-slate-400 bg-white/5 p-3 rounded-xl border border-white/5">
+                            <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white">
+                                {{ essay.student.full_name[0] }}
+                            </div>
+                            <span class="truncate">From: <strong class="text-slate-300">{{ essay.student.full_name }}</strong></span>
+                        </div>
+                        
+                        <!-- ACTION BUTTONS -->
+                        <div class="mt-auto flex flex-col gap-3 w-full">
+                            <!-- Preview/Download Document -->
+                            <a href="{{ url_for('download_essay', essay_id=essay.id) }}" target="_blank" class="w-full py-3 flex justify-center items-center gap-2 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 hover:border-indigo-500/50 rounded-xl text-sm font-bold transition-all shadow-md">
+                                <span>📄</span> View Document
+                            </a>
+                            
+                            <!-- Start Evaluation or View Feedback -->
+                            {% if essay.status == 'pending' %}
+                            <button @click="showEvalModal = true; activeEssayId = '{{ essay.id }}'; activeEssayTitle = '{{ essay.title|escape }}'" class="w-full py-3 text-center bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20">
+                                Start Evaluation
+                            </button>
+                            {% else %}
+                            <button @click="showFeedbackModal = true; activeEssayTitle = '{{ essay.title|escape }}'; activeScore = '{{ essay.score }}'; activeFeedback = '{{ essay.feedback|escape }}'" class="w-full py-3 text-center bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-bold transition-all">
+                                View Your Feedback
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% else %}
+                    <!-- EMPTY STATE (Shows when 0 essays) -->
+                    <div class="col-span-full bg-black/20 border border-slate-800/50 rounded-2xl p-12 text-center shadow-inner">
+                        <div class="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-6 text-4xl border border-slate-700 shadow-xl">
+                            🤷‍♂️
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-3">Your Queue is Empty</h3>
+                        <p class="text-slate-400 max-w-md mx-auto text-sm leading-relaxed">
+                            There are currently no essay requests assigned to you. When a student uploads a document, it will automatically appear right here.
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALS FOR EVALUATION                      -->
+    <!-- ========================================== -->
+
+    <!-- Evaluate Modal (For Pending) -->
+    <div x-show="showEvalModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" x-transition.opacity>
+        <div @click.away="showEvalModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative" x-transition.scale.origin.bottom>
+            <button @click="showEvalModal = false" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors">✕</button>
+            
+            <h2 class="text-2xl font-bold text-white mb-2">Evaluate Essay</h2>
+            <p class="text-sm text-slate-400 mb-6">Evaluating: <span class="text-indigo-400 font-bold" x-text="activeEssayTitle"></span></p>
+            
+            <form :action="'/evaluate-essay/' + activeEssayId" method="POST" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Score (out of 10)</label>
+                    <input type="number" name="score" min="0" max="10" required placeholder="e.g. 8" class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Evaluator Comments</label>
+                    <textarea name="feedback" required rows="5" placeholder="Provide constructive feedback here..." class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20">Submit Evaluation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Feedback Modal (For Reviewed) -->
+    <div x-show="showFeedbackModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" x-transition.opacity>
+        <div @click.away="showFeedbackModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative" x-transition.scale.origin.bottom>
+            <button @click="showFeedbackModal = false" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors">✕</button>
+            <h2 class="text-2xl font-bold text-white mb-2">Your Feedback</h2>
+            <p class="text-sm text-slate-400 mb-6" x-text="activeEssayTitle"></p>
+            
+            <div class="space-y-4">
+                <div class="bg-black/40 border border-slate-700 rounded-xl p-4">
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-1">Score Given</span>
+                    <div class="text-3xl font-black text-indigo-400"><span x-text="activeScore"></span><span class="text-slate-600 text-xl">/10</span></div>
+                </div>
+                <div class="bg-black/40 border border-slate-700 rounded-xl p-4">
+                    <span class="block text-xs font-bold text-slate-500 uppercase mb-2">Comments</span>
+                    <p class="text-slate-300 text-sm whitespace-pre-wrap" x-text="activeFeedback"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -28,7 +28,8 @@ class User(UserMixin, db.Document):
     sop_generations_count = db.IntField(default=0)
     
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
-
+    # Inside your User model class in app/models/user.py
+    is_paid = db.BooleanField(default=False)
 @login_manager.user_loader
 def load_user(user_id):
     try:
