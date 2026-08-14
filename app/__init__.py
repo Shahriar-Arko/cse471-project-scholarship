@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, render_template
+from flask import Flask, redirect, url_for, render_template, flash
 from .extensions import db, login_manager, bcrypt
 from flask_login import login_required, current_user
 import os
@@ -7,8 +7,10 @@ def create_app(config_name='development'):
     app = Flask(__name__)
     
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-key')
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+    mongo_uri = os.environ.get('MONGODB_URI')
     app.config['MONGODB_SETTINGS'] = {
-        'host': 'mongodb+srv://Admin:admin123@cluster0.1jknqf7.mongodb.net/scholarship_matcher?retryWrites=true&w=majority'
+        'host': mongo_uri or 'mongodb://localhost:27017/scholarship_matcher'
     }
 
     # Initialize extensions
@@ -56,6 +58,11 @@ def create_app(config_name='development'):
             return redirect(url_for('professor_dashboard'))
         return redirect(url_for('student_dashboard'))
         
+    @app.errorhandler(413)
+    def handle_file_too_large(error):
+        flash('The uploaded file is too large. Please upload a PDF or DOCX smaller than 10MB.', 'error')
+        return redirect(url_for('student.resume_analyzer'))
+
     @app.route('/dashboard/student')
     @login_required
     def student_dashboard():

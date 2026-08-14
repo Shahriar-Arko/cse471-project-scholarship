@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Resume Analysis Details | ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col relative overflow-hidden">
+    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-[40rem] h-[40rem] bg-indigo-500/10 rounded-full blur-[100px] animate-pulse"></div>
+    <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] bg-purple-500/10 rounded-full blur-[100px] animate-pulse" style="animation-delay: 2s;"></div>
+
+    <nav class="border-b border-white/5 bg-white/5 backdrop-blur-xl sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center gap-4">
+            <a href="{{ url_for('student.resume_analyzer') }}" class="p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:border-indigo-500/50 transition-colors text-slate-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-xl font-bold text-white">Resume Analysis Details</h1>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto w-full p-6 lg:p-8 relative z-10 space-y-6">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-wider text-slate-400">Filename</p>
+                    <h2 class="text-2xl font-bold text-white mt-2">{{ analysis.filename }}</h2>
+                </div>
+                <div class="rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-4 py-2 text-indigo-200 font-semibold">
+                    Overall score: {{ analysis.overall_score }}
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div class="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400">Formatting</p>
+                <p class="mt-3 text-2xl font-bold text-white">{{ analysis.formatting_score }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400">Academic</p>
+                <p class="mt-3 text-2xl font-bold text-white">{{ analysis.academic_score }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400">Skills</p>
+                <p class="mt-3 text-2xl font-bold text-white">{{ analysis.skills_score }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400">Completeness</p>
+                <p class="mt-3 text-2xl font-bold text-white">{{ analysis.completeness_score }}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-950/50 border border-slate-800 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400">Date</p>
+                <p class="mt-3 text-md font-bold text-white">{{ analysis.created_at.strftime('%Y-%m-%d') if analysis.created_at else 'Unknown' }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Detected academic information</h3>
+                {% if analysis.extracted_data %}
+                <div class="space-y-3 text-sm text-slate-300">
+                    {% for key, value in analysis.extracted_data.items() %}
+                    {% if value is not none and value != '' and value != [] %}
+                    <div class="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                        <span class="text-slate-400 block mb-1">{{ key|replace('_', ' ')|title }}</span>
+                        {% if value is mapping %}
+                            <span class="text-white">{{ value }}</span>
+                        {% elif value is iterable and value is not string %}
+                            <span class="text-white">{{ value | join(', ') }}</span>
+                        {% else %}
+                            <span class="text-white">{{ value }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-slate-400">No extracted data recorded.</div>
+                {% endif %}
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Detected technical skills</h3>
+                {% if analysis.extracted_data and analysis.extracted_data.skills %}
+                <div class="flex flex-wrap gap-2">
+                    {% for skill in analysis.extracted_data.skills %}
+                    <span class="px-2.5 py-1.5 rounded-full bg-indigo-500/10 text-indigo-200 border border-indigo-500/20 text-sm">{{ skill }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-slate-400">No skills recorded.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if analysis.scholarship_matches and analysis.scholarship_matches.matches %}
+        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4">Relevant scholarship matches</h3>
+            <p class="text-sm text-indigo-200 mb-4">{{ analysis.scholarship_matches.summary }}</p>
+            <div class="space-y-3">
+                {% for match in analysis.scholarship_matches.matches %}
+                <div class="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="font-medium text-white">{{ match.title }}</p>
+                            <p class="text-xs text-slate-300 mt-1">{{ match.university }} • {{ match.country }}</p>
+                        </div>
+                        <span class="inline-flex items-center rounded-full bg-indigo-500/20 border border-indigo-400/30 px-2.5 py-1 text-xs font-semibold text-indigo-100">{{ match.match_score }}%</span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+                        <span class="bg-slate-900/60 rounded-full px-2 py-1">{{ match.degree_level }}</span>
+                        <span class="bg-slate-900/60 rounded-full px-2 py-1">{{ match.major }}</span>
+                        <span class="bg-slate-900/60 rounded-full px-2 py-1">GPA ≥ {{ match.minimum_gpa }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Missing required information</h3>
+                {% if analysis.missing_information and analysis.missing_information.required_missing %}
+                <ul class="space-y-2 text-sm text-rose-200">
+                    {% for item in analysis.missing_information.required_missing %}
+                    <li class="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-slate-400">No required information missing.</div>
+                {% endif %}
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Missing recommended information</h3>
+                {% if analysis.missing_information and analysis.missing_information.recommended_missing %}
+                <ul class="space-y-2 text-sm text-amber-200">
+                    {% for item in analysis.missing_information.recommended_missing %}
+                    <li class="rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-slate-400">No recommended information missing.</div>
+                {% endif %}
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Recommendations</h3>
+                {% if analysis.recommendations %}
+                <ul class="space-y-3 text-sm text-slate-200">
+                    {% for recommendation in analysis.recommendations %}
+                    <li class="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3">{{ recommendation }}</li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-slate-400">No recommendations available.</div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
