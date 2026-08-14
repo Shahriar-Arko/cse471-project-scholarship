@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-8 flex items-center justify-center">
+    <div class="max-w-2xl w-full bg-slate-900/80 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+        
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-white">Update Your Profile</h1>
+            <p class="text-slate-400 text-sm mt-1">Enhance your evaluator profile with your academic background.</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('edit_evaluator_profile') }}" class="space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Full Name -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Full Name</label>
+                    <input type="text" name="full_name" value="{{ current_user.full_name }}" required 
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- University -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">University / Institution</label>
+                    <input type="text" name="university" value="{{ current_user.university or '' }}" placeholder="e.g. Harvard University"
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- Major -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Academic Major</label>
+                    <input type="text" name="major" value="{{ current_user.major or '' }}" placeholder="e.g. Computer Science"
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- Nationality -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Nationality</label>
+                    <input type="text" name="nationality" value="{{ current_user.nationality or '' }}" placeholder="e.g. Bangladeshi"
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+
+                <!-- Experience -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-2">Years of Experience</label>
+                    <input type="text" name="experience" value="{{ current_user.experience or '' }}" placeholder="e.g. 5 Years"
+                        class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-4 pt-6 border-t border-slate-800">
+                <a href="{{ url_for('evaluator_dashboard') }}" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition-all">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

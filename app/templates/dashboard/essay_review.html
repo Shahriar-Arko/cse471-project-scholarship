@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Essay Review - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-[#0B1120] via-[#0f172a] to-[#1e1b4b] text-slate-100 p-8 flex gap-8 relative overflow-hidden" 
+     x-data="{ 
+        showModal: false, 
+        showUpgradeModal: false,
+        showEvaluators: false, 
+        showSubmissions: false, 
+        selectedEvaluator: null, 
+        selectedEvaluatorName: '', 
+        fileName: '',
+        isPaid: {{ 'true' if current_user.is_paid else 'false' }},
+        
+        handleSubmitClick(evaluatorId, evaluatorName) {
+            this.selectedEvaluator = evaluatorId;
+            this.selectedEvaluatorName = evaluatorName;
+            this.fileName = '';
+            
+            if (!this.isPaid) {
+                // Show bKash Upgrade Pop-up
+                this.showUpgradeModal = true;
+            } else {
+                // Show Upload Form
+                this.showModal = true;
+            }
+        }
+     }">
+    
+    <!-- Ambient Background Glows -->
+    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-500/20 rounded-full mix-blend-screen filter blur-[120px] opacity-70 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-indigo-500/20 rounded-full mix-blend-screen filter blur-[120px] opacity-70 pointer-events-none"></div>
+
+    <!-- Main Content Container -->
+    <div class="flex-1 max-w-6xl mx-auto relative z-10">
+        <div class="mb-8 border-b border-slate-800/50 pb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white mb-2">Essay Review</h1>
+                <p class="text-slate-400">Select a verified evaluator to review your application essays</p>
+            </div>
+            {% if current_user.is_paid %}
+                <span class="px-4 py-2 bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/30 flex items-center gap-2">
+                    <span>✨</span> Pro Plan Active
+                </span>
+            {% else %}
+                <span class="px-4 py-2 bg-amber-500/20 text-amber-400 text-xs font-bold rounded-full border border-amber-500/30 flex items-center gap-2">
+                    <span>🔒</span> Free Tier (Upgrade Needed)
+                </span>
+            {% endif %}
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
+            <button @click="showEvaluators = !showEvaluators; showSubmissions = false" class="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-8 shadow-2xl transition-all duration-300 relative overflow-hidden text-left w-full focus:outline-none backdrop-blur-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20" x-text="showEvaluators ? 'Close Directory ↙' : 'Open Directory ↗'"></span>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xl">🧑</div>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Registered Evaluators</h3>
+                <div class="text-5xl font-black text-emerald-400 my-4">{{ evaluators|length }}</div>
+                <p class="text-slate-400 text-xs">Browse verified evaluators available for essay review.</p>
+            </button>
+
+            <button @click="showSubmissions = !showSubmissions; showEvaluators = false" class="group bg-slate-900/80 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 rounded-3xl p-8 shadow-2xl transition-all duration-300 relative overflow-hidden text-left w-full focus:outline-none backdrop-blur-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20" x-text="showSubmissions ? 'Close Directory ↙' : 'Open Directory ↗'"></span>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xl">📝</div>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">Evaluator's Feedback</h3>
+                <div class="text-5xl font-black text-emerald-400 my-4">{{ my_essays|length }}</div>
+                <p class="text-slate-400 text-xs">View all your submitted essays and feedback.</p>
+            </button>
+        </div>
+
+        <!-- Evaluators Directory -->
+        <div x-show="showEvaluators" x-collapse x-cloak>
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 backdrop-blur-md mt-4 shadow-2xl relative">
+                <div class="flex justify-between items-center mb-8 border-b border-slate-800/50 pb-4">
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">🔍</span>
+                        Evaluators
+                    </h2>
+                    <button @click="showEvaluators = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white">✕</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {% for evaluator in evaluators %}
+                    <div class="bg-black/40 border border-slate-800/60 rounded-3xl p-8 flex flex-col items-center text-center shadow-xl hover:border-emerald-500/50 transition-all">
+                        <div class="w-24 h-24 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-4xl font-black mb-4 shadow-inner">
+                            {{ evaluator.full_name[0] }}
+                        </div>
+                        
+                        <h3 class="text-xl font-bold text-white mb-1">{{ evaluator.full_name }}</h3>
+                        <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20 mb-4">Verified Evaluator</span>
+                        
+                        <div class="w-full space-y-2 mb-6 text-sm">
+                            <p class="text-slate-300 flex justify-between border-b border-slate-800 pb-2">
+                                <span class="text-slate-500 font-semibold text-xs uppercase">University</span>
+                                <span class="font-medium text-right">{{ evaluator.university or 'Not specified' }}</span>
+                            </p>
+                            <p class="text-slate-300 flex justify-between border-b border-slate-800 pb-2">
+                                <span class="text-slate-500 font-semibold text-xs uppercase">Major</span>
+                                <span class="font-medium text-right">{{ evaluator.major or 'General' }}</span>
+                            </p>
+                            <p class="text-slate-300 flex justify-between pb-2">
+                                <span class="text-slate-500 font-semibold text-xs uppercase">Experience</span>
+                                <span class="font-medium text-right">{{ evaluator.experience or 'N/A' }}</span>
+                            </p>
+                        </div>
+                        
+                        <!-- Trigger Payment Interceptor -->
+                        <button @click="handleSubmitClick('{{ evaluator.id }}', '{{ evaluator.full_name }}')" 
+                                class="mt-auto w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition-all flex items-center justify-center gap-2">
+                            <span>Submit Essay</span>
+                            <span x-show="!isPaid" class="text-xs bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded border border-amber-400/30">1 Tk</span>
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="col-span-full p-12 text-center bg-black/20 rounded-3xl border border-slate-800">
+                        <p class="text-slate-400">No evaluators currently available.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- My Submissions Directory -->
+        <div x-show="showSubmissions" x-collapse x-cloak>
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 backdrop-blur-md mt-4 shadow-2xl relative">
+                <div class="flex justify-between items-center mb-8 border-b border-slate-800/50 pb-4">
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">💬</span>
+                        Evaluator's Feedback
+                    </h2>
+                    <button @click="showSubmissions = false" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white">✕</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {% for essay in my_essays %}
+                    <div class="bg-black/30 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+                        <div class="flex justify-between items-start mb-4">
+                            {% if essay.status == 'pending' %}
+                                <span class="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-full border border-amber-500/20">Pending Review</span>
+                            {% else %}
+                                <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-xs font-bold rounded-full border border-emerald-500/20">Reviewed</span>
+                            {% endif %}
+                            <span class="text-slate-500 text-xs">{{ essay.created_at.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-white mb-1">{{ essay.title }}</h3>
+                        <p class="text-sm text-slate-400 mb-6">Evaluator: <span class="text-emerald-300 font-medium">{{ essay.evaluator.full_name }}</span></p>
+                        
+                        {% if essay.status == 'reviewed' %}
+                        <div class="mt-auto bg-black/40 border border-slate-700 rounded-2xl p-4">
+                            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase">Score</span>
+                                <span class="text-xl font-black text-emerald-400">{{ essay.score }}/10</span>
+                            </div>
+                            <p class="text-sm text-slate-300 italic">"{{ essay.feedback }}"</p>
+                        </div>
+                        {% else %}
+                        <div class="mt-auto bg-slate-800/30 border border-slate-800 rounded-2xl p-4 text-center">
+                            <p class="text-sm text-slate-400">Waiting for evaluator feedback...</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="col-span-full p-8 text-center bg-black/20 rounded-2xl border border-slate-800">
+                        <p class="text-slate-400">No essays submitted yet.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. BKASH / SSLCOMMERZ UPGRADE POP-UP MODAL  -->
+    <!-- ========================================== -->
+    <div x-show="showUpgradeModal" x-cloak class="fixed inset-0 z-[120] flex items-center justify-center bg-black/85 backdrop-blur-md" x-transition.opacity>
+        <div @click.away="showUpgradeModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl p-8 w-full max-w-md shadow-2xl relative text-center" x-transition.scale>
+            
+            <button @click="showUpgradeModal = false" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white">✕</button>
+            
+            <!-- bKash / Payment Badge -->
+            <div class="w-16 h-16 bg-pink-500/20 border border-pink-500/40 text-pink-400 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl font-bold shadow-lg shadow-pink-500/10">
+                💳
+            </div>
+
+            <h2 class="text-2xl font-black text-white mb-2">Upgrade Your Plan</h2>
+            <p class="text-sm text-slate-400 mb-6">
+                To submit essays for professional evaluation, you need to upgrade your student account.
+            </p>
+
+            <!-- Pricing Box -->
+            <div class="bg-black/40 border border-slate-800 rounded-2xl p-4 mb-6 text-left space-y-2">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span class="text-xs text-slate-400 font-bold uppercase">Feature</span>
+                    <span class="text-xs text-emerald-400 font-bold">Unlimited Essay Submissions</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-400 font-bold uppercase">Price</span>
+                    <span class="text-2xl font-black text-pink-400">1.00 BDT</span>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-500 mb-6 flex items-center justify-center gap-2">
+                <span>🔒 Secure checkout via bKash & SSLCommerz</span>
+            </p>
+
+            <!-- Upgrade Plan Trigger -->
+            <form action="{{ url_for('student.initiate_payment') }}" method="POST">
+                <button type="submit" class="w-full py-4 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white rounded-xl font-extrabold shadow-lg shadow-pink-600/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <span>Pay 1 Tk via bKash</span>
+                    <span>→</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. ACTUAL ESSAY UPLOAD FORM MODAL         -->
+    <!-- ========================================== -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" x-transition.opacity>
+        <div @click.away="showModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl p-8 w-full max-w-lg shadow-2xl relative" x-transition.scale>
+            
+            <button @click="showModal = false" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white">✕</button>
+            
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-white mb-1">Submit Essay</h2>
+                <p class="text-sm text-slate-400">Sending to Evaluator: <span class="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded" x-text="selectedEvaluatorName"></span></p>
+            </div>
+            
+            <form action="{{ url_for('student.submit_essay') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
+                <input type="hidden" name="evaluator_id" :value="selectedEvaluator">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Essay Title</label>
+                    <input type="text" name="title" required placeholder="e.g., Statement of Purpose - Draft 1" class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Upload Document</label>
+                    <div class="w-full bg-black/40 border-2 border-dashed border-slate-700 rounded-xl px-4 py-8 text-center hover:border-emerald-500 transition-all relative overflow-hidden">
+                        <input type="file" name="essay_file" accept=".pdf,.doc,.docx" required @change="fileName = $event.target.files[0].name" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        
+                        <div class="text-slate-400 pointer-events-none" x-show="!fileName">
+                            <span class="text-3xl block mb-2">📄</span>
+                            <span class="font-semibold text-emerald-400">Click to upload</span> or drag and drop<br>
+                            <span class="text-xs mt-1 block">PDF or DOCX (Max 5MB)</span>
+                        </div>
+                        
+                        <div class="text-emerald-400 font-semibold pointer-events-none flex flex-col items-center" x-show="fileName" x-cloak>
+                            <span class="text-3xl block mb-2">✅</span>
+                            Selected File:
+                            <span class="text-white block mt-1 break-all" x-text="fileName"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2">
+                    <span>Submit for Review</span>
+                    <span>→</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

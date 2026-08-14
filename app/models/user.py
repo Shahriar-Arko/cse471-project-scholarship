@@ -34,7 +34,8 @@ class User(UserMixin, db.Document):
     tracked_scholarships = db.ListField(db.ReferenceField('Scholarship'))
     
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
-
+    # Inside your User model class in app/models/user.py
+    is_paid = db.BooleanField(default=False)
 @login_manager.user_loader
 def load_user(user_id):
     try:
