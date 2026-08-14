@@ -18,8 +18,14 @@ class Evaluator(UserMixin, db.Document):
     avatar_url = db.StringField(null=True)
     
     # Admin Approval & OTP Fields
-    is_approved = db.BooleanField(default=False) # Evaluators must be approved by Admin
+    is_approved = db.BooleanField(default=False) 
     otp_code = db.StringField(null=True)
     otp_expiry = db.DateTimeField(null=True)
+    
+    # --- NEW: Profile Fields ---
+    university = db.StringField(null=True)
+    major = db.StringField(null=True)
+    experience = db.StringField(null=True)
+    nationality = db.StringField(null=True)
     
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
