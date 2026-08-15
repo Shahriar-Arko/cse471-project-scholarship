@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Scholarship Cost Calculator | ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col relative overflow-hidden">
+    <!-- Animated Background Glow (Matching Dashboard/Document tools) -->
+    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-[40rem] h-[40rem] bg-purple-500/10 rounded-full blur-[100px] animate-pulse"></div>
+
+    <!-- Header Navigation -->
+    <div class="border-b border-white/5 bg-white/5 backdrop-blur-xl sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center gap-4">
+            <a href="{{ url_for('dashboard') }}"
+                class="p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:border-purple-500/50 transition-colors text-slate-400 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+            </a>
+            <div>
+                <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                    <span class="text-purple-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                    </span>
+                    Scholarship Cost Calculator
+                </h1>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="max-w-7xl mx-auto w-full flex-grow p-6 lg:p-8 flex flex-col lg:flex-row gap-8 relative z-10">
+
+        <!-- ==================== LEFT SIDEBAR (MODULE 2 HUB) ==================== -->
+        <aside class="w-full lg:w-1/4 flex-shrink-0">
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-4 sticky top-28 backdrop-blur-xl">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 px-3">Application Tools</h3>
+
+                <nav class="space-y-1">
+                    <!-- 1. AI Document Checklist (INACTIVE here) -->
+                    <a href="{{ url_for('student.document_review') }}"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                            </path>
+                        </svg>
+                        AI Document Checklist
+                    </a>
+
+                    <!-- 2. SOP Generator (INACTIVE) -->
+                    <a href="#"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                            </path>
+                        </svg>
+                        SOP Generator
+                    </a>
+                    
+                    <!-- 3. AI Resume/CV Analyzer (INACTIVE) -->
+                    <a href="#"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2">
+                            </path>
+                        </svg>
+                        Resume Analyzer
+                    </a>
+
+                    <!-- 4. AI Essay Review (INACTIVE) -->
+                    <a href="#"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                        AI Essay Review
+                    </a>
+
+                    <!-- 5. Missing Requirement Analyzer (INACTIVE) -->
+                    <a href="#"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                        </svg>
+                        Missing Requirements
+                    </a>
+
+                    <!-- 6. AI Cost Calculator (ACTIVE here) -->
+                    <a href="{{ url_for('student.cost_calculator') }}"
+                        class="flex items-center gap-3 px-3 py-3 rounded-xl bg-purple-500/10 text-purple-400 font-semibold border border-purple-500/20">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        Scholarship Cost Calculator
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- ==================== RIGHT CONTENT (ACTIVE FEATURE TOOL) ==================== -->
+        <main class="w-full lg:w-3/4 flex flex-col gap-6">
+
+            <!-- Selection Banner & Dropdown -->
+            <div class="rounded-3xl p-6 bg-slate-900/60 border border-slate-800 backdrop-blur-xl shadow-2xl">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <h3 class="text-lg font-bold text-white">Select a Scholarship</h3>
+                        <p class="text-xs text-purple-300">Choose a saved or discoverable scholarship to estimate pre-departure and post-arrival study costs</p>
+                    </div>
+                    <div class="w-full md:w-96">
+                        <select id="scholarship-select" onchange="loadCalculation(this.value)" class="w-full px-4 py-3 rounded-xl border border-white/10 bg-slate-950 text-slate-200 focus:outline-none focus:border-purple-500 transition-all font-medium">
+                            <option value="">-- Select Scholarship --</option>
+                            {% if tracked_scholarships %}
+                            <optgroup label="My Saved Scholarships">
+                                {% for s in tracked_scholarships %}
+                                    <option value="{{ s.id }}" {% if s.id | string == selected_id %}selected{% endif %}>{{ s.title }} ({{ s.university }})</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                            <optgroup label="All Scholarships">
+                                {% for s in all_scholarships %}
+                                    <option value="{{ s.id }}" {% if s.id | string == selected_id %}selected{% endif %}>{{ s.title }} ({{ s.university }})</option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder when no scholarship selected -->
+            <div id="calculator-placeholder" class="{% if selected_id %}hidden{% endif %} rounded-3xl p-16 text-center bg-slate-900/40 border border-slate-800 backdrop-blur-sm">
+                <div class="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                </div>
+                <h4 class="text-3xl font-bold text-white mb-2">Awaiting Selection</h4>
+                <p class="text-slate-400 max-w-lg mx-auto text-base leading-relaxed">Select a scholarship from the dropdown list to pull real-time country cost reference guides and perform financial calculations.</p>
+            </div>
+
+            <!-- Calculator Content Details -->
+            <div id="calculator-results" class="{% if not selected_id %}hidden{% endif %} grid grid-cols-1 xl:grid-cols-12 gap-6">
+                
+                <!-- LEFT: Structured Cost Breakdown Table & Charts -->
+                <div class="xl:col-span-7 space-y-6">
+                    <!-- Quick stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pre-departure Cost</span>
+                            <div class="mt-2 flex items-baseline gap-1">
+                                <span class="text-xl font-bold text-white" id="pre-departure-val">$0.00</span>
+                                <span class="text-[10px] text-slate-400">USD</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 mt-1">Visa, test fees, travel & apps</span>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Annual Study / Living</span>
+                            <div class="mt-2 flex items-baseline gap-1">
+                                <span class="text-xl font-bold text-indigo-400" id="annual-study-val">$0.00</span>
+                                <span class="text-[10px] text-slate-400">USD</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 mt-1">Rent, food, insurance & transport</span>
+                        </div>
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 backdrop-blur-xl flex flex-col justify-between">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Est. Monthly Budget</span>
+                            <div class="mt-2 flex items-baseline gap-1">
+                                <span class="text-xl font-bold text-purple-400" id="monthly-budget-val">$0.00</span>
+                                <span class="text-[10px] text-slate-400">USD</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500 mt-1">Rent & food budget estimate</span>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Breakdown Card -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl">
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span>📊</span> Cost Breakdown Itemization
+                        </h3>
+                        
+                        <div class="divide-y divide-white/5 space-y-4">
+                            <!-- 1. Pre-departure -->
+                            <div class="pt-4 first:pt-0">
+                                <h4 class="text-sm font-semibold text-purple-300 uppercase tracking-wider mb-3">1. One-time Pre-departure Costs</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">University Application Fee</span>
+                                        <span class="font-semibold text-white" id="item-app-fee">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">Visa Processing Fee</span>
+                                        <span class="font-semibold text-white" id="item-visa-fee">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">Language Exams (IELTS/TOEFL)</span>
+                                        <span class="font-semibold text-white" id="item-lang-fee">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">International Travel / Airfare</span>
+                                        <span class="font-semibold text-white" id="item-travel-fee">$0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Post-arrival (Living/Tuition) -->
+                            <div class="pt-6">
+                                <h4 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-3">2. Living & Studying Costs (Annual)</h4>
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">Student Health Insurance</span>
+                                        <span class="font-semibold text-white" id="item-ins-fee">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">Estimated Living Costs (Monthly)</span>
+                                        <span class="font-semibold text-white" id="item-monthly-living">$0.00</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">Estimated Living Costs (Annual total)</span>
+                                        <span class="font-semibold text-white text-indigo-400" id="item-annual-living">$0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 3. Local Notes -->
+                            <div class="pt-6 text-xs text-slate-400 italic">
+                                <span class="font-semibold text-slate-300 not-italic block mb-1">Local Regulations / Notes:</span>
+                                <span id="cost-notes">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: AI Advisor Panel -->
+                <div class="xl:col-span-5 space-y-6">
+                    <!-- AI Advice Panel -->
+                    <div class="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/20 rounded-3xl p-6 backdrop-blur-xl shadow-2xl relative">
+                        <!-- Glow badge -->
+                        <div class="absolute -top-3 right-6 bg-purple-600 text-white font-bold text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md shadow-purple-600/30 border border-purple-400/20">
+                            RAG AI Analyst
+                        </div>
+                        
+                        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span>✨</span> Financial Suitability & Savings Advice
+                        </h3>
+
+                        <!-- Loading State -->
+                        <div id="ai-loading" class="hidden py-12 flex flex-col items-center justify-center gap-4 text-slate-400 text-sm">
+                            <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+                            <span>Calculating costs and synthesizing advice...</span>
+                        </div>
+
+                        <!-- AI Report Markdown Output -->
+                        <div id="ai-text" class="text-sm text-slate-200 space-y-4 leading-relaxed whitespace-pre-line">
+                            Select a scholarship and watch our AI estimate the cost structure.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    // If selected_id was passed via query params, load calculation
+    const select = document.getElementById("scholarship-select");
+    if(select && select.value) {
+        loadCalculation(select.value);
+    }
+});
+
+async function loadCalculation(scholarshipId) {
+    const placeholder = document.getElementById("calculator-placeholder");
+    const results = document.getElementById("calculator-results");
+    const aiLoading = document.getElementById("ai-loading");
+    const aiText = document.getElementById("ai-text");
+
+    if (!scholarshipId) {
+        placeholder.classList.remove("hidden");
+        results.classList.add("hidden");
+        return;
+    }
+
+    placeholder.classList.add("hidden");
+    results.classList.remove("hidden");
+    aiLoading.classList.remove("hidden");
+    aiText.classList.add("hidden");
+
+    try {
+        const response = await fetch(`/student/api/calculate_cost/${scholarshipId}`);
+        const data = await response.json();
+
+        if (data.status === "success") {
+            // Update quick stats
+            document.getElementById("pre-departure-val").textContent = formatCurrency(data.costs.total_pre_departure);
+            document.getElementById("annual-study-val").textContent = formatCurrency(data.costs.total_post_arrival_annual);
+            document.getElementById("monthly-budget-val").textContent = formatCurrency(data.costs.monthly_living_cost);
+
+            // Update item details
+            document.getElementById("item-app-fee").textContent = formatCurrency(data.costs.application_fee);
+            document.getElementById("item-visa-fee").textContent = formatCurrency(data.costs.visa_fee);
+            document.getElementById("item-lang-fee").textContent = formatCurrency(data.costs.language_test_fee);
+            document.getElementById("item-travel-fee").textContent = formatCurrency(data.costs.travel_cost);
+
+            document.getElementById("item-ins-fee").textContent = formatCurrency(data.costs.insurance_cost);
+            document.getElementById("item-monthly-living").textContent = formatCurrency(data.costs.monthly_living_cost);
+            document.getElementById("item-annual-living").textContent = formatCurrency(data.costs.annual_living_cost);
+
+            document.getElementById("cost-notes").textContent = data.costs.notes || "No special local regulations found.";
+
+            // Render AI advice nicely
+            aiText.textContent = data.ai_advice;
+        } else {
+            aiText.textContent = `Error loading data: ${data.message}`;
+        }
+    } catch(e) {
+        console.error("Calculator fetch failed:", e);
+        aiText.textContent = "Unable to connect to the calculator api. Please try again later.";
+    } finally {
+        aiLoading.classList.add("hidden");
+        aiText.classList.remove("hidden");
+    }
+}
+
+function formatCurrency(val) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+}
+</script>
+{% endblock %}

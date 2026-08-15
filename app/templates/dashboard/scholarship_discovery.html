@@ -175,16 +175,21 @@
                             
                             <!-- CONDITIONAL BUTTON RENDERING -->
                             {% set current_id = scholarship.id or scholarship._id | string %}
-                            {% if current_id in tracked_ids %}
-                                <button disabled class="text-xs bg-emerald-500/20 text-emerald-400 px-3.5 py-2 rounded-xl border border-emerald-500/30 transition-all font-semibold flex items-center gap-1.5 shadow-sm cursor-default">
-                                    ✅ Saved
-                                </button>
-                            {% else %}
-                                <button onclick="trackScholarship('{{ current_id }}', this)" class="text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-3.5 py-2 rounded-xl border border-indigo-500/30 transition-all font-semibold flex items-center gap-1.5 shadow-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Track Scholarship
-                                </button>
-                            {% endif %}
+                            <div class="flex items-center gap-2">
+                                <a href="{{ url_for('student.cost_calculator', scholarship_id=current_id) }}" class="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-3 py-2 rounded-xl border border-purple-500/30 transition-all font-semibold flex items-center gap-1 shadow-sm" title="Calculate study & application costs">
+                                    🧮 Cost
+                                </a>
+                                {% if current_id in tracked_ids %}
+                                    <button disabled class="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-xl border border-emerald-500/30 transition-all font-semibold flex items-center gap-1 cursor-default">
+                                        ✅ Saved
+                                    </button>
+                                {% else %}
+                                    <button onclick="trackScholarship('{{ current_id }}', this)" class="text-xs bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-3 py-2 rounded-xl border border-indigo-500/30 transition-all font-semibold flex items-center gap-1 shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        Track
+                                    </button>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
