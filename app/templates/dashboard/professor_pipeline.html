@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Review Pipeline - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-8" x-data="pipelineManager()">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Toast Notification -->
+        <div x-show="showToast" x-cloak x-transition.opacity.duration.300ms
+             class="fixed bottom-6 right-6 z-[200] bg-slate-900 border border-emerald-500/50 text-emerald-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl">
+            <span class="text-lg">✨</span>
+            <span class="text-sm font-semibold" x-text="toastMessage"></span>
+        </div>
+
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8 border-b border-slate-800 pb-6">
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="text-emerald-400 text-sm font-semibold hover:underline mb-2 inline-block">← Back to Dashboard</a>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    <span class="text-purple-400">📋</span> Application Review Pipeline
+                </h1>
+            </div>
+        </div>
+
+        <!-- Pitch List -->
+        <div class="space-y-6">
+            {% for pitch in pitches %}
+            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-md transition-all"
+                 :class="{
+                     'border-emerald-500/50 bg-emerald-900/10': '{{ pitch.status }}' === 'shortlisted',
+                     'opacity-50 grayscale border-red-500/20': '{{ pitch.status }}' === 'declined'
+                 }">
+                
+                <div class="flex flex-col md:flex-row justify-between gap-6">
+                    <!-- Student Info -->
+                    <div class="md:w-1/3 border-b md:border-b-0 md:border-r border-slate-800 pb-4 md:pb-0 md:pr-6">
+                        <div class="flex items-center gap-4 mb-4">
+                            {% if pitch.student.avatar_url %}
+                            <img src="{{ pitch.student.avatar_url }}" class="w-14 h-14 rounded-full border border-slate-700 object-cover">
+                            {% else %}
+                            <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xl">{{ pitch.student.full_name[0] }}</div>
+                            {% endif %}
+                            <div>
+                                <h3 class="text-lg font-bold text-white">{{ pitch.student.full_name }}</h3>
+                                <p class="text-xs text-slate-400">{{ pitch.student.email }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 text-sm">
+                            <p class="flex justify-between"><span class="text-slate-500">Degree:</span> <span class="font-semibold text-slate-300">{{ pitch.student.degree_level or 'Masters' }}</span></p>
+                            <p class="flex justify-between"><span class="text-slate-500">Major:</span> <span class="font-semibold text-slate-300">{{ pitch.student.major or 'N/A' }}</span></p>
+                            <p class="flex justify-between"><span class="text-slate-500">CGPA:</span> <span class="font-bold text-emerald-400">{{ pitch.student.gpa or 'N/A' }}</span></p>
+                            <p class="flex justify-between"><span class="text-slate-500">Interest:</span> <span class="font-semibold text-purple-400">{{ pitch.target_domain }}</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Pitch Content & Actions -->
+                    <div class="md:w-2/3 flex flex-col justify-between">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Expression of Interest (Pitch)</h4>
+                            <p class="text-sm text-slate-300 leading-relaxed bg-black/30 p-4 rounded-2xl border border-slate-800/50 italic">
+                                "{{ pitch.pitch_text }}"
+                            </p>
+                            <p class="text-xs text-slate-500 mt-2 text-right">Received: {{ pitch.created_at.strftime('%b %d, %Y') }}</p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end gap-3 mt-6">
+                            {% if pitch.status == 'pending' %}
+                            <button @click="updateStatus('{{ pitch.id }}', 'declined')" class="px-4 py-2 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-xl text-xs font-bold transition-all border border-slate-700 hover:border-red-500/40">
+                                Decline
+                            </button>
+                            <button @click="updateStatus('{{ pitch.id }}', 'shortlisted')" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all">
+                                ✓ Shortlist Candidate
+                            </button>
+                            {% elif pitch.status == 'shortlisted' %}
+                            <span class="px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-2">
+                                <span>🟢</span> Shortlisted
+                            </span>
+                            
+                            <!-- In-App Direct Email Trigger -->
+                            <button @click="openEmailModal('{{ pitch.id }}', '{{ pitch.student.full_name }}', '{{ pitch.student.email }}', '{{ pitch.target_domain }}')"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-300 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-2 shadow-lg">
+                                <span>✉️</span> Email Student
+                            </button>
+                            {% else %}
+                            <span class="px-4 py-2 bg-slate-800 text-slate-500 border border-slate-700 rounded-xl text-xs font-bold">
+                                Declined
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                <span class="text-5xl block mb-4">📭</span>
+                <h3 class="text-xl font-bold text-white mb-2">No Applications Yet</h3>
+                <p class="text-slate-400 text-sm max-w-md mx-auto">When students submit expressions of interest to your lab, they will appear here for your review.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ==================== EMAIL COMPOSER MODAL ==================== -->
+    <div x-show="showEmailModal" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showEmailModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full shadow-2xl p-8 relative" x-transition.scale>
+            
+            <button @click="showEmailModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700">✕</button>
+
+            <div>
+                <div class="mb-6 border-b border-slate-800 pb-4">
+                    <h2 class="text-2xl font-black text-white flex items-center gap-2">
+                        <span>✉️</span> Direct Student Outreach
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-1">
+                        Sending direct message to <span class="text-emerald-400 font-semibold" x-text="emailForm.student_name"></span> (<span class="text-slate-300" x-text="emailForm.student_email"></span>)
+                    </p>
+                </div>
+
+                <div x-show="emailError" x-cloak class="mb-4 p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2 font-medium">
+                    <span>⚠️</span>
+                    <span x-text="emailError"></span>
+                </div>
+
+                <form @submit.prevent="sendEmail()" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subject</label>
+                        <input type="text" x-model="emailForm.subject" required
+                               class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none text-sm font-medium">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Message Body</label>
+                        <textarea x-model="emailForm.body" required rows="7"
+                                  placeholder="Provide interview details, meeting availability, or next steps for the applicant..."
+                                  class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none resize-none text-sm leading-relaxed"></textarea>
+                    </div>
+
+                    <button type="submit" :disabled="sendingEmail" 
+                            class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer">
+                        <span x-text="sendingEmail ? 'Dispatching Message...' : 'Send Message to Inbox →'"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function pipelineManager() {
+    return {
+        showToast: false,
+        toastMessage: '',
+        showEmailModal: false,
+        sendingEmail: false,
+        emailError: '',
+        emailForm: {
+            pitch_id: '',
+            student_name: '',
+            student_email: '',
+            subject: '',
+            body: ''
+        },
+
+        updateStatus(pitchId, status) {
+            fetch(`/professor/api/pitch/${pitchId}/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Failed to update status.');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error occurred.');
+            });
+        },
+
+        openEmailModal(pitchId, studentName, studentEmail, domain) {
+            this.emailForm = {
+                pitch_id: pitchId,
+                student_name: studentName,
+                student_email: studentEmail,
+                subject: `Invitation for Research Discussion: ${domain}`,
+                body: `Dear ${studentName},\n\nI have reviewed your research expression of interest regarding ${domain} and would like to discuss potential research collaboration in my lab.\n\nPlease let me know your availability for a short introductory call this week.\n\nBest regards,\nProf. {{ current_user.full_name }}`
+            };
+            this.emailError = '';
+            this.showEmailModal = true;
+        },
+
+        sendEmail() {
+            this.emailError = '';
+            if (!this.emailForm.subject || !this.emailForm.body) {
+                this.emailError = 'Please fill out both the subject and message body.';
+                return;
+            }
+
+            this.sendingEmail = true;
+
+            fetch(`/professor/api/pitch/${this.emailForm.pitch_id}/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    subject: this.emailForm.subject,
+                    body: this.emailForm.body
+                })
+            })
+            .then(async (res) => {
+                this.sendingEmail = false;
+                const data = await res.json();
+                if (res.ok) {
+                    this.showEmailModal = false;
+                    this.notify(data.message || 'Email sent successfully!');
+                } else {
+                    this.emailError = data.error || 'Failed to deliver message.';
+                }
+            })
+            .catch(err => {
+                this.sendingEmail = false;
+                this.emailError = 'Network error occurred while delivering email.';
+                console.error(err);
+            });
+        },
+
+        notify(msg) {
+            this.toastMessage = msg;
+            this.showToast = true;
+            setTimeout(() => { this.showToast = false; }, 3500);
+        }
+    };
+}
+</script>
+{% endblock %}

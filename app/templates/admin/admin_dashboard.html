@@ -123,6 +123,77 @@
         </div>
         {% endif %}
 
+
+        <!-- ============================================== -->
+        <!-- NEW: Pending Professors Card & Queue           -->
+        <!-- ============================================== -->
+        
+        <!-- Pending Professors Card (Full Width) -->
+        <div class="bg-[#1e293b]/50 border border-teal-500/30 rounded-3xl p-8 relative overflow-hidden backdrop-blur-xl mt-8">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-xs font-bold text-teal-400 bg-teal-500/10 px-3 py-1 rounded-full uppercase tracking-wider border border-teal-500/20">
+                    ACTION REQUIRED ↗
+                </span>
+                <div class="w-10 h-10 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                    <span class="text-teal-400 font-bold">👨‍🏫</span>
+                </div>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Pending Professors</h3>
+            <div class="text-5xl font-black text-teal-400 my-4">{{ pending_professors_count | default('0') }}</div>
+            <p class="text-slate-400 text-xs">
+                Review and approve professor registration requests to grant them platform access.
+            </p>
+        </div>
+
+        <!-- Professor Approval Queue Table (Only visible if there are requests) -->
+        {% if pending_professors_count > 0 %}
+        <div class="bg-slate-900/60 border border-teal-500/30 rounded-3xl p-8 backdrop-blur-md mt-6">
+            <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <span class="text-teal-500">⏳</span> Professor Approval Queue
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="text-xs text-slate-400 uppercase bg-slate-900/80">
+                        <tr>
+                            <th class="px-4 py-4 rounded-tl-xl">Name</th>
+                            <th class="px-4 py-4">Email Address</th>
+                            <th class="px-4 py-4">Status</th>
+                            <th class="px-4 py-4 text-right rounded-tr-xl">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prof in pending_professors %}
+                        <tr class="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+                            <td class="px-4 py-5 font-medium text-white">{{ prof.full_name }}</td>
+                            <td class="px-4 py-5">{{ prof.email }}</td>
+                            <td class="px-4 py-5">
+                                <span class="px-2 py-1 bg-teal-500/10 text-teal-400 rounded-md text-xs font-semibold">Pending Approval</span>
+                            </td>
+                            <td class="px-4 py-5 text-right">
+                                <!-- Approve Button Form -->
+                                <form action="{{ url_for('admin.approve_professor', prof_id=prof.id) }}" method="POST" class="inline">
+                                    <button type="submit" class="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/30 hover:scale-[1.02] transition-all font-bold text-xs shadow-lg">
+                                        Approve 
+                                    </button>
+                                </form>
+
+                                <!-- Reject Button Form with Confirmation -->
+                                <form action="{{ url_for('admin.reject_professor', prof_id=prof.id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to reject and permanently delete this professor?');">
+                                    <button type="submit" class="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/30 hover:scale-[1.02] transition-all font-bold text-xs shadow-lg">
+                                        Reject
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        <!-- ============================================== -->
+
         <!-- Platform Oversight Banner -->
         <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-8 backdrop-blur-md mt-8">
             <h2 class="text-xl font-bold text-white mb-2">Platform Oversight Controls</h2>

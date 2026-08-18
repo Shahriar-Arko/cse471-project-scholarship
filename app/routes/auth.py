@@ -11,8 +11,6 @@ import threading
 
 auth_bp = Blueprint('auth', __name__)
 
-RESTRICTED_BRACU_DOMAIN = "@g.bracu.ac.bd"
-
 def send_otp_email_async(user_email, otp_code):
     try:
         sender_email = os.environ.get('MAIL_USERNAME')
@@ -60,14 +58,6 @@ def login():
         role = request.form.get('role', 'student')
         remember = True if request.form.get('remember') else False
 
-        if role == 'professor' and not email.endswith(RESTRICTED_BRACU_DOMAIN):
-            flash(f"Only official '{RESTRICTED_BRACU_DOMAIN}' emails can log in as a Professor.", 'error')
-            return render_template('auth/login.html')
-
-        if role == 'student' and email.endswith(RESTRICTED_BRACU_DOMAIN):
-            flash(f"'{RESTRICTED_BRACU_DOMAIN}' emails are reserved for Professors.", 'error')
-            return render_template('auth/login.html')
-
         user, error = authenticate_user(email, password, role)
         if user:
             # Check Admin Approval for Evaluators and Professors
@@ -93,7 +83,6 @@ def login():
             flash(error, 'error')
 
     return render_template('auth/login.html')
-
 
 @auth_bp.route('/verify-otp', methods=['GET', 'POST'])
 def verify_otp():
@@ -127,7 +116,6 @@ def verify_otp():
 
     return render_template('auth/verify_otp.html')
 
-
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
@@ -141,18 +129,10 @@ def register():
         institution = request.form.get('institution')
         department = request.form.get('department')
 
-        if role == 'professor' and not email.endswith(RESTRICTED_BRACU_DOMAIN):
-            flash(f"Professors must register using an official email ending in '{RESTRICTED_BRACU_DOMAIN}'.", 'error')
-            return render_template('auth/register.html')
-
-        if role == 'student' and email.endswith(RESTRICTED_BRACU_DOMAIN):
-            flash(f"'{RESTRICTED_BRACU_DOMAIN}' emails cannot be registered as Student accounts.", 'error')
-            return render_template('auth/register.html')
-
         user, error = register_user(email, password, full_name, role, institution, department)
         
         if user:
-            # Set to False to require admin approval
+            # Require admin approval for evaluators and professors
             if role in ['evaluator', 'professor']:
                 user.is_approved = False
                 user.save()
@@ -166,13 +146,11 @@ def register():
 
     return render_template('auth/register.html')
 
-
 @auth_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
-
 
 @auth_bp.route('/google/login')
 def google_login():
@@ -188,7 +166,6 @@ def google_login():
     google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={google_client_id}&redirect_uri={redirect_uri}&response_type=code&scope=openid email profile&prompt=consent"
     
     return redirect(google_auth_url)
-
 
 @auth_bp.route('/google/callback')
 def google_callback():
@@ -221,15 +198,6 @@ def google_callback():
     google_user_info = user_info_response.json()
     
     role = session.get('oauth_role', 'student')
-    email = google_user_info.get('email', '').lower()
-
-    if role == 'professor' and not email.endswith(RESTRICTED_BRACU_DOMAIN):
-        flash(f"Access denied. Only official BRACU emails ('{RESTRICTED_BRACU_DOMAIN}') can log in as a Professor.", 'error')
-        return redirect(url_for('auth.login'))
-
-    if role == 'student' and email.endswith(RESTRICTED_BRACU_DOMAIN):
-        flash(f"Access denied. '{RESTRICTED_BRACU_DOMAIN}' emails are restricted from logging in as a Student.", 'error')
-        return redirect(url_for('auth.login'))
     
     try:
         user = find_or_create_google_user(google_user_info, role)
