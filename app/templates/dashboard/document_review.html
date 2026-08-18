@@ -44,7 +44,7 @@
 
                 <nav class="space-y-1">
                     <!-- 1. AI Document Checklist (ACTIVE) -->
-                    <a href="#"
+                    <a href="{{ url_for('student.document_review') }}"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl bg-purple-500/10 text-purple-400 font-semibold border border-purple-500/20">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -64,7 +64,7 @@
                         </svg>
                         SOP Generator
                     </a>
-
+                    
                     <!-- 3. AI Resume/CV Analyzer (INACTIVE) -->
                     <a href="#"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
@@ -97,8 +97,8 @@
                         Missing Requirements
                     </a>
 
-                    <!-- 6. AI Cost Calculator (INACTIVE) -->
-                    <a href="#"
+                    <!-- 6. AI Cost Calculator (ACTIVE) -->
+                    <a href="{{ url_for('student.cost_calculator') }}"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
