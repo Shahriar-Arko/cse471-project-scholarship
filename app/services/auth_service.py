@@ -1,6 +1,6 @@
 from app.models.user import User
 from app.models.professor import Professor
-from app.models.evaluator import Evaluator  # <-- Make sure this is imported!
+from app.models.evaluator import Evaluator
 from app.extensions import bcrypt
 
 def register_user(email, password, full_name, role, institution=None, department=None):
@@ -11,7 +11,18 @@ def register_user(email, password, full_name, role, institution=None, department
     hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
     
     if role == 'professor':
-        user = Professor(email=email, password=hashed_pw, full_name=full_name, role=role, is_approved=False)
+        # Provide default placeholders for required Professor Finder fields
+        user = Professor(
+            email=email, 
+            password=hashed_pw, 
+            full_name=full_name, 
+            role=role, 
+            is_approved=False,
+            institution=institution or "Pending Configuration",
+            department=department or "Pending Configuration",
+            country="Not Specified",
+            primary_domain="Not Specified"
+        )
     elif role == 'evaluator':
         user = Evaluator(email=email, password=hashed_pw, full_name=full_name, role=role, is_approved=False)
     else:
@@ -51,7 +62,7 @@ def find_or_create_google_user(google_user_info, role):
                 role=role, 
                 google_id=google_id, 
                 avatar_url=avatar_url,
-                password="GOOGLE_AUTH_PLACEHOLDER", # Random placeholder since they use Google
+                password="GOOGLE_AUTH_PLACEHOLDER",
                 is_approved=False 
             )
             user.save()
@@ -62,6 +73,7 @@ def find_or_create_google_user(google_user_info, role):
         user = Professor.objects(email=email).first()
         if not user:
             # Create new Professor (pending approval)
+            # Provide default placeholders for required Professor Finder fields
             user = Professor(
                 email=email, 
                 full_name=full_name, 
@@ -69,7 +81,11 @@ def find_or_create_google_user(google_user_info, role):
                 google_id=google_id, 
                 avatar_url=avatar_url,
                 password="GOOGLE_AUTH_PLACEHOLDER",
-                is_approved=False
+                is_approved=False,
+                institution="Pending Configuration",
+                department="Pending Configuration",
+                country="Not Specified",
+                primary_domain="Not Specified"
             )
             user.save()
         return user

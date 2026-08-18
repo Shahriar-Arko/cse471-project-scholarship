@@ -52,6 +52,10 @@ def create_app(config_name='development'):
     from .routes.student.sop_routes import sop_bp
     app.register_blueprint(sop_bp)
 
+    from app.routes.professor_routes import professor_bp
+    # ... inside your create_app() function ...
+    app.register_blueprint(professor_bp)
+
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
@@ -59,11 +63,19 @@ def create_app(config_name='development'):
     @app.route('/dashboard')
     @login_required
     def dashboard():
+        # --- ADD THIS INTERCEPTOR ---
+        if current_user.role == 'professor':
+            if getattr(current_user, 'institution', '') == "Pending Configuration":
+                flash("Please complete your academic profile to continue.", "info")
+                return redirect(url_for('professor.setup_profile'))
+            return render_template('dashboard/professor_dashboard.html')
+        # ----------------------------
+
         if current_user.role == 'admin':
             return redirect(url_for('admin.admin_dashboard'))
-        if current_user.role == 'professor':
-            return redirect(url_for('professor_dashboard'))
-        return redirect(url_for('student_dashboard'))
+        
+        # Otherwise, render student dashboard
+        return render_template('dashboard/student_dashboard.html')
         
     @app.route('/dashboard/student')
     @login_required

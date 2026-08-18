@@ -23,13 +23,16 @@ class User(UserMixin, db.Document):
     major = db.StringField(null=True)
     tracked_scholarships = db.ListField(db.ReferenceField('Scholarship'))
     
+    # --- PROFESSOR PIPELINE / BOOKMARKS ---
+    bookmarked_professors = db.ListField(db.ReferenceField('Professor'), default=list)
+    
     # --- FREEMIUM & PAYMENT TRACKING FIELDS ---
     is_paid = db.BooleanField(default=False)
     sop_generations_count = db.IntField(default=0)
     
     created_at = db.DateTimeField(default=datetime.datetime.utcnow)
-    # Inside your User model class in app/models/user.py
-    is_paid = db.BooleanField(default=False)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     try:

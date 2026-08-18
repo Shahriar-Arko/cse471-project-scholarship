@@ -1,64 +1,709 @@
 {% extends "base.html" %}
-
-{% block title %}Professor & Lab Finder | ScholarMatch{% endblock %}
+{% block title %}Professor Finder - ScholarMatch{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col relative overflow-hidden">
-    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-[40rem] h-[40rem] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse"></div>
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-6 lg:p-8 relative overflow-hidden" x-data="professorFinderApp()">
 
-    <div class="border-b border-white/5 bg-white/5 backdrop-blur-xl sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center gap-4">
-            <a href="{{ url_for('dashboard') }}" class="p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:border-emerald-500/50 transition-colors text-slate-400 hover:text-white">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            </a>
-            <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                <span class="text-emerald-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                </span>
-                Research Network
-            </h1>
+    <!-- Ambient Background Glows -->
+    <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-500/15 rounded-full mix-blend-screen filter blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-purple-500/15 rounded-full mix-blend-screen filter blur-[120px] pointer-events-none"></div>
+
+    <!-- Toast Notification -->
+    <div x-show="showToast" x-cloak x-transition.opacity.duration.300ms
+         class="fixed bottom-6 right-6 z-[200] bg-slate-900 border border-emerald-500/50 text-emerald-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl">
+        <span class="text-lg">✨</span>
+        <span class="text-sm font-semibold" x-text="toastMessage"></span>
+    </div>
+
+    <!-- Header Navigation -->
+    <div class="max-w-7xl mx-auto mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <a href="{{ url_for('dashboard') }}" class="p-2 bg-slate-900/60 border border-slate-800 rounded-xl hover:border-emerald-500/50 transition-colors text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    <span class="text-emerald-400">🔬</span> Professor Finder
+                </h1>
+            </div>
+            <p class="text-slate-400 text-sm">Discover prospective graduate research supervisors, laboratory affiliations, and monitor faculty response decisions in real-time.</p>
+        </div>
+
+        <!-- Mode Indicator Badge -->
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold px-3 py-1.5 rounded-xl border"
+                  :class="activeTab === 'search' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-purple-500/10 text-purple-400 border-purple-500/30'">
+                <span x-text="activeTab === 'search' ? '🔍 Faculty Search' : '📬 Response Tracker Mode'"></span>
+            </span>
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto w-full flex-grow p-6 lg:p-8 flex flex-col lg:flex-row gap-8 relative z-10">
-        <aside class="w-full lg:w-1/4 flex-shrink-0">
-            <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-4 sticky top-28 backdrop-blur-xl">
-                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 px-3">Module 3: Research</h3>
-                <nav class="space-y-1">
-                    <a href="#" class="flex items-center gap-3 px-3 py-3 rounded-xl bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                        Professor Finder
-                    </a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                        AI Email Generator
-                    </a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                        Interest Analyzer
-                    </a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"></path></svg>
-                        Keyword Extractor
-                    </a>
-                    <a href="#" class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
-                        Referral Rewards
-                    </a>
-                </nav>
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- ==================== LEFT SIDEBAR ==================== -->
+        <aside class="lg:col-span-4 space-y-6">
+
+            <!-- 1. NAVIGATION MODULE SELECTOR -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-2xl backdrop-blur-xl">
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block px-3 mb-3">
+                    Faculty Portal Tools
+                </span>
+
+                <div class="space-y-1.5">
+                    <!-- Option 1: Search Faculty -->
+                    <button @click="switchTab('search')"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left cursor-pointer"
+                            :class="activeTab === 'search' 
+                                ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-lg shadow-purple-500/10' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                        <span class="text-lg">🔍</span>
+                        <span>Search Professor / Faculty</span>
+                    </button>
+
+                    <!-- Option 2: Check Response -->
+                    <button @click="switchTab('responses')"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left cursor-pointer"
+                            :class="activeTab === 'responses' 
+                                ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-lg shadow-purple-500/10' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">📬</span>
+                            <span>Check Responses</span>
+                        </div>
+                        <span class="text-xs font-black px-2 py-0.5 rounded-full"
+                              :class="pitchedCount > 0 ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-500'"
+                              x-text="pitchedCount"></span>
+                    </button>
+
+                    <!-- Shortlist Toggle -->
+                    <button @click="toggleShortlist()"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left cursor-pointer"
+                            :class="filters.bookmarked_only 
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg shadow-amber-500/10' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">⭐</span>
+                            <span>Shortlisted Professor</span>
+                        </div>
+                    </button>
+                </div>
             </div>
+
+            <!-- 2. FILTER DIRECTORY (Only visible in 'search' tab) -->
+            <div x-show="activeTab === 'search'" x-transition.opacity
+                 class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-xl sticky top-6">
+                
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                        </svg>
+                        Filter Faculty
+                    </h2>
+                    <button @click="resetFilters()" class="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline cursor-pointer">Reset All</button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Keyword Search</label>
+                        <input type="text" x-model="filters.search" @input.debounce.300ms="fetchProfessors()"
+                               placeholder="e.g., Andrew Ng, NLP, Robotics, CMU..."
+                               class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none placeholder-slate-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Primary Domain</label>
+                        <select x-model="filters.domain" @change="fetchProfessors()"
+                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">All Domains</option>
+                            {% for d in domains %}
+                            <option value="{{ d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Country Location</label>
+                        <select x-model="filters.country" @change="fetchProfessors()"
+                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">All Countries</option>
+                            {% for c in countries %}
+                            <option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Host Institution</label>
+                        <select x-model="filters.institution" @change="fetchProfessors()"
+                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">All Universities</option>
+                            {% for inst in institutions %}
+                            <option value="{{ inst }}">{{ inst }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Academic Department</label>
+                        <select x-model="filters.department" @change="fetchProfessors()"
+                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
+                            <option value="">All Departments</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept }}">{{ dept }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800">
+                        <label class="flex items-center gap-3 cursor-pointer select-none">
+                            <input type="checkbox" x-model="filters.funding_only" @change="fetchProfessors()"
+                                   class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-black/40 border-slate-700">
+                            <span class="text-sm font-semibold text-emerald-300">Active RA/TA Funding Available Only</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. OUTREACH SUMMARY CARD (Visible in 'responses' tab) -->
+            <div x-show="activeTab === 'responses'" x-transition.opacity
+                 class="bg-slate-900/70 border border-purple-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-xl">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span>📊</span> Pitch Decision Status
+                </h3>
+                <div class="space-y-3 text-xs">
+                    <div class="flex justify-between p-3 bg-black/40 border border-slate-800 rounded-xl">
+                        <span class="text-slate-400">Total Pitches Sent</span>
+                        <span class="font-bold text-white" x-text="pitchedCount"></span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                        <span class="text-emerald-300">Shortlisted / Accepted</span>
+                        <span class="font-bold text-emerald-400" x-text="professors.filter(p => p.pitch_info && p.pitch_info.status === 'shortlisted').length"></span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                        <span class="text-amber-300">Pending Faculty Review</span>
+                        <span class="font-bold text-amber-400" x-text="professors.filter(p => p.pitch_info && p.pitch_info.status === 'pending').length"></span>
+                    </div>
+                </div>
+            </div>
+
         </aside>
 
-        <main class="w-full lg:w-3/4">
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-white mb-2">Professor Finder</h2>
-                <p class="text-slate-400">Search for potential supervisors based on your research interests and their funding availability.</p>
-            </div>
+        <!-- ==================== MAIN CONTENT AREA ==================== -->
+        <main class="lg:col-span-8">
             
-            <div class="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-12 text-center h-[400px] flex flex-col justify-center">
-                <p class="text-slate-500">Coming Soon: Professor Database and Search Interface</p>
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white" x-text="activeTab === 'search' ? 'Faculty Directory' : 'Your Submitted Research Pitches & Responses'"></h2>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400" x-text="`${professors.length} Records Found`"></span>
+                </div>
             </div>
+
+            <!-- Loading State -->
+            <div x-show="loading" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                <div class="inline-block animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-3"></div>
+                <p class="text-slate-400 text-sm">Querying faculty database...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!loading && professors.length === 0" x-cloak
+                 class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                <span class="text-5xl block mb-4">📭</span>
+                <h3 class="text-xl font-bold text-white mb-2" x-text="activeTab === 'search' ? 'No Matching Faculty Found' : 'No Pitches Submitted Yet'"></h3>
+                <p class="text-slate-400 text-sm max-w-md mx-auto mb-6" x-text="activeTab === 'search' ? 'Try broadening your search criteria or resetting filters.' : 'You have not submitted any expressions of interest to professors yet. Use the Search Faculty tab to discover labs and send your first pitch!'"></p>
+                <button @click="activeTab === 'search' ? resetFilters() : switchTab('search')" 
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer"
+                        x-text="activeTab === 'search' ? 'Reset Filters' : 'Explore Faculty Directory →'"></button>
+            </div>
+
+            <!-- Professor Cards Grid -->
+            <div x-show="!loading && professors.length > 0" class="space-y-6" x-cloak>
+                <template x-for="prof in professors" :key="prof.id">
+                    <div class="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-md flex flex-col md:flex-row gap-6 relative group"
+                         :class="{ 'border-purple-500/40 bg-slate-900/90': prof.pitch_info && activeTab === 'responses' }">
+                        
+                        <!-- Avatar Column -->
+                        <div class="flex-shrink-0 flex md:flex-col items-center justify-start">
+                            <template x-if="prof.avatar_url">
+                                <img :src="prof.avatar_url" class="w-20 h-20 rounded-2xl object-cover border-2 border-slate-700 shadow-md">
+                            </template>
+                            <template x-if="!prof.avatar_url">
+                                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600/30 to-teal-800/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-3xl font-black shadow-inner">
+                                    <span x-text="prof.full_name[0]"></span>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Info Column -->
+                        <div class="flex-1 flex flex-col justify-between">
+                            <div>
+                                <!-- Top Header -->
+                                <div class="flex justify-between items-start mb-1">
+                                    <div>
+                                        <h3 class="text-xl font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer" @click="openProfileModal(prof)" x-text="prof.full_name"></h3>
+                                        <p class="text-xs text-slate-400 font-medium" x-text="`${prof.title} • ${prof.department}`"></p>
+                                    </div>
+                                    <button @click="toggleBookmark(prof)"
+                                            :title="prof.is_bookmarked ? 'Remove from Shortlist' : 'Add to Shortlist Pipeline'"
+                                            class="p-2 rounded-xl border transition-all text-sm cursor-pointer"
+                                            :class="prof.is_bookmarked ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:text-white'">
+                                        <span x-text="prof.is_bookmarked ? '★' : '☆'"></span>
+                                    </button>
+                                </div>
+
+                                <!-- Institution & Funding Badges -->
+                                <div class="flex flex-wrap items-center gap-2 my-2.5">
+                                    <span class="text-xs px-3 py-1 bg-slate-800 text-slate-300 rounded-full border border-slate-700 font-medium" x-text="prof.institution"></span>
+                                    <span class="text-xs px-2.5 py-1 bg-slate-800/60 text-slate-400 rounded-full border border-slate-700/60" x-text="`📍 ${prof.country}`"></span>
+                                    
+                                    <template x-if="prof.has_funding && prof.accepting_students">
+                                        <span class="text-xs px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full font-bold flex items-center gap-1">
+                                            <span>🟢</span> Active Funding (RA/TA)
+                                        </span>
+                                    </template>
+                                </div>
+
+                                <!-- Domain Chips -->
+                                <div class="flex flex-wrap gap-1.5 my-3">
+                                    <span class="text-xs font-semibold px-2.5 py-0.5 bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 rounded-lg" x-text="prof.primary_domain"></span>
+                                    <template x-for="tag in prof.research_interests.slice(0, 3)" :key="tag">
+                                        <span class="text-xs px-2 py-0.5 bg-black/40 text-slate-400 border border-slate-800 rounded-lg" x-text="tag"></span>
+                                    </template>
+                                </div>
+
+                                <!-- PITCH HISTORY & ACCEPTANCE BANNER (Only in Check Responses Tab) -->
+                                <template x-if="prof.pitch_info && activeTab === 'responses'">
+                                    <div class="my-3 space-y-2.5">
+                                        
+                                        <!-- Shortlisted / Accepted Alert Banner -->
+                                        <template x-if="prof.pitch_info.status === 'shortlisted'">
+                                            <div class="p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="text-lg">🎉</span>
+                                                    <div>
+                                                        <p class="text-xs font-bold text-emerald-300">Pitch Accepted & Shortlisted!</p>
+                                                        <p class="text-[11px] text-emerald-400/80">Prof. <span x-text="prof.full_name"></span> has shortlisted your application. Check your email for direct communication.</p>
+                                                    </div>
+                                                </div>
+                                                <span class="px-2.5 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-lg">Accepted</span>
+                                            </div>
+                                        </template>
+
+                                        <!-- Sent Pitch Details -->
+                                        <div class="p-3.5 bg-black/40 border border-slate-800 rounded-2xl">
+                                            <div class="flex justify-between items-center text-xs mb-1.5">
+                                                <span class="text-slate-400 font-semibold">Your Pitch to Prof. <span class="text-white" x-text="prof.full_name"></span> (<span class="text-purple-300 font-bold" x-text="prof.pitch_info.target_domain"></span>)</span>
+                                                <span class="text-slate-500 text-[11px]" x-text="`Sent: ${prof.pitch_info.created_at}`"></span>
+                                            </div>
+                                            <p class="text-xs text-slate-300 italic line-clamp-2" x-text="`“${prof.pitch_info.pitch_text}”`"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Bottom Row: Lab & Action Controls -->
+                            <div class="pt-3 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div class="text-xs text-slate-400 flex items-center gap-1.5">
+                                    <span>🔬</span>
+                                    <span class="font-medium text-slate-300" x-text="prof.lab_name"></span>
+                                </div>
+
+                                <div class="flex items-center gap-2 w-full sm:w-auto">
+                                    <button @click="openProfileModal(prof)" class="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer">
+                                        View Full Profile →
+                                    </button>
+                                    
+                                    <!-- Dynamic Action Button / Status Pills -->
+                                    <template x-if="!prof.pitch_info">
+                                        <button @click="openPitchForm(prof)" class="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
+                                            <span>📝</span>
+                                            <span>Send Pitch</span>
+                                        </button>
+                                    </template>
+
+                                    <template x-if="prof.pitch_info">
+                                        <div>
+                                            <template x-if="prof.pitch_info.status === 'pending'">
+                                                <span class="px-3.5 py-2 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                                                    <span>⏳</span> Pitch Pending Review
+                                                </span>
+                                            </template>
+                                            <template x-if="prof.pitch_info.status === 'shortlisted'">
+                                                <span class="px-3.5 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-pulse">
+                                                    <span>🟢</span> Shortlisted by Faculty
+                                                </span>
+                                            </template>
+                                            <template x-if="prof.pitch_info.status === 'declined'">
+                                                <span class="px-3.5 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                                                    <span>⚪</span> Declined
+                                                </span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+
         </main>
     </div>
+
+    <!-- ==================== PROFESSOR PROFILE MODAL ==================== -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative" x-transition.scale>
+            
+            <button @click="showModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
+
+            <template x-if="selectedProf">
+                <div class="space-y-6">
+                    <div class="flex items-start gap-5 border-b border-slate-800 pb-6">
+                        <template x-if="selectedProf.avatar_url">
+                            <img :src="selectedProf.avatar_url" class="w-20 h-20 rounded-2xl object-cover border border-slate-700">
+                        </template>
+                        <template x-if="!selectedProf.avatar_url">
+                            <div class="w-20 h-20 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-3xl font-black">
+                                <span x-text="selectedProf.full_name[0]"></span>
+                            </div>
+                        </template>
+
+                        <div class="flex-1">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-black text-white" x-text="selectedProf.full_name"></h2>
+                                    <p class="text-sm text-slate-400" x-text="`${selectedProf.title} • ${selectedProf.department}`"></p>
+                                    <p class="text-xs text-emerald-400 font-semibold mt-1" x-text="`${selectedProf.institution}, ${selectedProf.country}`"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-black/30 border border-slate-800 rounded-2xl p-4">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Laboratory Affiliation</span>
+                            <h4 class="text-sm font-bold text-white mt-1" x-text="selectedProf.lab_name"></h4>
+                            <template x-if="selectedProf.lab_website">
+                                <a :href="selectedProf.lab_website" target="_blank" class="text-xs text-emerald-400 hover:underline mt-1 inline-block">Visit Lab Website ↗</a>
+                            </template>
+                        </div>
+                        <div class="bg-black/30 border border-slate-800 rounded-2xl p-4">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Funding & Openings</span>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-sm font-bold text-emerald-400" x-text="selectedProf.has_funding ? '🟢 Actively Sponsoring Students' : '⚪ Self-Funded Applicants'"></span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1" x-text="`Sponsorship Types: ${selectedProf.funding_types.join(', ') || 'RA / TA'}`"></p>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/20 border border-slate-800 rounded-2xl p-4" x-show="selectedProf.bio_summary">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Research Overview</h4>
+                        <p class="text-sm text-slate-300 leading-relaxed" x-text="selectedProf.bio_summary"></p>
+                    </div>
+
+                    <div>
+                        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <span>📚</span> Recent Publication Highlights
+                        </h4>
+                        <div class="space-y-2.5">
+                            <template x-for="pub in selectedProf.publications" :key="pub.title">
+                                <div class="bg-black/30 border border-slate-800/80 rounded-xl p-3.5 flex justify-between items-center gap-4 hover:border-slate-700">
+                                    <div>
+                                        <p class="text-sm font-semibold text-slate-200" x-text="pub.title"></p>
+                                        <p class="text-xs text-slate-400 mt-0.5" x-text="`${pub.venue || 'Academic Journal'} (${pub.year || 'Recent'}) • ${pub.citations_count || 0} Citations`"></p>
+                                    </div>
+                                    <template x-if="pub.citation_url">
+                                        <a :href="pub.citation_url" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-lg text-xs font-bold flex-shrink-0">
+                                            Citation ↗
+                                        </a>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div x-show="selectedProf.grant_projects && selectedProf.grant_projects.length > 0">
+                        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <span>🏛️</span> Active Grant Initiatives
+                        </h4>
+                        <div class="space-y-2">
+                            <template x-for="grant in selectedProf.grant_projects" :key="grant.title">
+                                <div class="bg-black/30 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                                    <div>
+                                        <p class="text-xs font-bold text-slate-300" x-text="grant.title"></p>
+                                        <p class="text-xs text-slate-500" x-text="`Sponsor: ${grant.agency} • Value: ${grant.amount}`"></p>
+                                    </div>
+                                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded" x-text="grant.status"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-800 flex justify-between items-center">
+                        <button @click="toggleBookmark(selectedProf)"
+                                class="px-5 py-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer"
+                                :class="selectedProf.is_bookmarked ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800 text-white border-slate-700'">
+                            <span x-text="selectedProf.is_bookmarked ? '★ Shortlisted' : '☆ Add to Research Pipeline'"></span>
+                        </button>
+
+                        <template x-if="!selectedProf.pitch_info">
+                            <button @click="openPitchForm(selectedProf)" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer">
+                                <span>📝 Submit Research Pitch</span>
+                                <span>→</span>
+                            </button>
+                        </template>
+
+                        <template x-if="selectedProf.pitch_info">
+                            <div>
+                                <template x-if="selectedProf.pitch_info.status === 'pending'">
+                                    <span class="px-5 py-3 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-2">
+                                        <span>⏳</span> Pitch Pending Review
+                                    </span>
+                                </template>
+                                <template x-if="selectedProf.pitch_info.status === 'shortlisted'">
+                                    <span class="px-5 py-3 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-2">
+                                        <span>🟢</span> Shortlisted by Faculty
+                                    </span>
+                                </template>
+                                <template x-if="selectedProf.pitch_info.status === 'declined'">
+                                    <span class="px-5 py-3 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                                        <span>⚪</span> Pitch Declined
+                                    </span>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ==================== RESEARCH PITCH MODAL ==================== -->
+    <div x-show="showPitchModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showPitchModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl p-8 relative" x-transition.scale>
+            
+            <button @click="showPitchModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
+
+            <template x-if="selectedProf">
+                <div>
+                    <div class="mb-6 border-b border-slate-800 pb-4">
+                        <h2 class="text-2xl font-black text-white mb-1">Submit Research Pitch</h2>
+                        <p class="text-sm text-slate-400">Applying to <span class="text-emerald-400 font-semibold" x-text="selectedProf.full_name"></span>'s Lab</p>
+                    </div>
+
+                    <div x-show="pitchError" x-cloak class="mb-4 p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2 font-medium">
+                        <span>⚠️</span>
+                        <span x-text="pitchError"></span>
+                    </div>
+
+                    <form @submit.prevent="submitPitch()" class="space-y-5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Research Area</label>
+                            <select x-model="pitchForm.target_domain" required class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none text-sm">
+                                <template x-if="selectedProf.primary_domain">
+                                    <option :value="selectedProf.primary_domain" x-text="selectedProf.primary_domain" selected></option>
+                                </template>
+                                <template x-for="tag in (selectedProf.research_interests || [])" :key="tag">
+                                    <option :value="tag" x-text="tag"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Your Pitch (Cover Letter)</label>
+                                <span class="text-xs text-slate-500" x-text="`${pitchForm.pitch_text.length}/1500 chars`"></span>
+                            </div>
+                            <textarea x-model="pitchForm.pitch_text" required maxlength="1500" rows="6" placeholder="Briefly explain your background, why you want to join this lab, and what specific value you bring (Max 1500 characters)..." class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none resize-none text-sm leading-relaxed"></textarea>
+                        </div>
+
+                        <button type="submit" :disabled="submittingPitch" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer">
+                            <span x-text="submittingPitch ? 'Submitting...' : 'Submit Expression of Interest →'"></span>
+                        </button>
+                    </form>
+                </div>
+            </template>
+        </div>
+    </div>
+
 </div>
+
+<!-- Isolated Alpine.js Script Block -->
+<script>
+function professorFinderApp() {
+    return {
+        activeTab: 'search', // 'search' or 'responses'
+        professors: [],
+        loading: true,
+        selectedProf: null,
+        showModal: false,
+        toastMessage: '',
+        showToast: false,
+        showPitchModal: false,
+        pitchError: '',
+        pitchForm: {
+            target_domain: '',
+            pitch_text: ''
+        },
+        submittingPitch: false,
+        filters: {
+            search: '',
+            country: '',
+            institution: '',
+            department: '',
+            domain: '',
+            funding_only: false,
+            bookmarked_only: false,
+            pitched_only: false
+        },
+
+        init() {
+            this.fetchProfessors();
+        },
+
+        get pitchedCount() {
+            return this.professors.filter(p => p.pitch_info !== null).length;
+        },
+
+        switchTab(tab) {
+            this.activeTab = tab;
+            if (tab === 'responses') {
+                this.filters.pitched_only = true;
+                this.filters.bookmarked_only = false;
+            } else {
+                this.filters.pitched_only = false;
+            }
+            this.fetchProfessors();
+        },
+
+        toggleShortlist() {
+            this.activeTab = 'search';
+            this.filters.pitched_only = false;
+            this.filters.bookmarked_only = !this.filters.bookmarked_only;
+            this.fetchProfessors();
+        },
+
+        fetchProfessors() {
+            this.loading = true;
+            const params = new URLSearchParams();
+            if (this.filters.search) params.append('search', this.filters.search);
+            if (this.filters.country) params.append('country', this.filters.country);
+            if (this.filters.institution) params.append('institution', this.filters.institution);
+            if (this.filters.department) params.append('department', this.filters.department);
+            if (this.filters.domain) params.append('domain', this.filters.domain);
+            if (this.filters.funding_only) params.append('funding_only', 'true');
+            if (this.filters.bookmarked_only) params.append('bookmarked_only', 'true');
+            if (this.filters.pitched_only) params.append('pitched_only', 'true');
+
+            fetch(`/student/api/professors?${params.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    this.professors = data.professors || [];
+                    this.loading = false;
+                })
+                .catch(err => {
+                    console.error('Error loading professors:', err);
+                    this.loading = false;
+                });
+        },
+
+        resetFilters() {
+            this.filters = {
+                search: '',
+                country: '',
+                institution: '',
+                department: '',
+                domain: '',
+                funding_only: false,
+                bookmarked_only: false,
+                pitched_only: this.activeTab === 'responses'
+            };
+            this.fetchProfessors();
+        },
+
+        toggleBookmark(prof) {
+            fetch(`/student/api/professors/bookmark/${prof.id}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        prof.is_bookmarked = data.is_bookmarked;
+                        if (this.selectedProf && this.selectedProf.id === prof.id) {
+                            this.selectedProf.is_bookmarked = data.is_bookmarked;
+                        }
+                        this.notify(data.message);
+                    }
+                })
+                .catch(err => console.error('Bookmark error:', err));
+        },
+
+        openProfileModal(prof) {
+            this.selectedProf = prof;
+            this.showModal = true;
+        },
+
+        openPitchForm(prof) {
+            this.selectedProf = prof;
+            this.pitchForm = { 
+                target_domain: prof.primary_domain || '', 
+                pitch_text: '' 
+            };
+            this.pitchError = '';
+            this.showPitchModal = true;
+            this.showModal = false;
+        },
+
+        submitPitch() {
+            this.pitchError = '';
+            if (!this.pitchForm.target_domain || !this.pitchForm.pitch_text) {
+                this.pitchError = 'Please select a research area and write your pitch.';
+                return;
+            }
+            this.submittingPitch = true;
+            fetch(`/student/api/professors/pitch/${this.selectedProf.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.pitchForm)
+            })
+            .then(async (res) => {
+                this.submittingPitch = false;
+                const contentType = res.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const data = await res.json();
+                    if (res.ok) {
+                        this.showPitchModal = false;
+                        
+                        if (data.pitch_info) {
+                            this.selectedProf.pitch_info = data.pitch_info;
+                            const targetInList = this.professors.find(p => p.id === this.selectedProf.id);
+                            if (targetInList) {
+                                targetInList.pitch_info = data.pitch_info;
+                            }
+                        }
+                        
+                        this.notify(data.message || 'Success!');
+                    } else {
+                        this.pitchError = data.error || 'Failed to submit pitch.';
+                    }
+                } else {
+                    this.pitchError = 'Server returned an invalid response. Check console.';
+                }
+            })
+            .catch(err => {
+                this.submittingPitch = false;
+                this.pitchError = 'Network error occurred. Please try again.';
+                console.error(err);
+            });
+        },
+
+        notify(msg) {
+            this.toastMessage = msg;
+            this.showToast = true;
+            setTimeout(() => { this.showToast = false; }, 3000);
+        }
+    };
+}
+</script>
 {% endblock %}
