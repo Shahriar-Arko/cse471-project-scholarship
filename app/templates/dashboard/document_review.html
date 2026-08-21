@@ -122,8 +122,8 @@
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                <!-- Generator Form -->
-                <div class="xl:col-span-5">
+                <div class="xl:col-span-5 space-y-6">
+                    <!-- Generator Form -->
                     <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl">
                         <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                             <span class="text-amber-400">⚡</span> Generate New Checklist
@@ -174,6 +174,93 @@
                                 Verify & Generate Checklist
                             </button>
                         </form>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl">
+                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                            <span class="text-cyan-400">📄</span> Resume Analyzer
+                        </h2>
+
+                        <form action="{{ url_for('student.analyze_resume') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Upload Resume</label>
+                                <input type="file" name="resume_file" accept=".pdf,.docx,.txt" required
+                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-cyan-500/20 file:text-cyan-300 file:font-medium hover:file:bg-cyan-500/30 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all text-sm">
+                            </div>
+
+                            <button type="submit"
+                                class="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-600/25 flex items-center justify-center gap-2 text-sm mt-4 cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Extract & Analyze Resume
+                            </button>
+                        </form>
+
+                        {% if latest_resume_analysis %}
+                        <div class="mt-6 border-t border-slate-800 pt-5">
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <h3 class="text-base font-semibold text-white">Latest Analysis</h3>
+                                <span class="px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-bold rounded-full">
+                                    ATS {{ latest_resume_analysis.ats_score }}
+                                </span>
+                            </div>
+
+                            <p class="text-sm text-slate-300 leading-relaxed mb-4">
+                                {{ latest_resume_analysis.overall_summary or 'Resume summary unavailable.' }}
+                            </p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                                    <h4 class="text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-2">Strengths</h4>
+                                    <ul class="space-y-1 text-slate-300">
+                                        {% for item in (latest_resume_analysis.strengths or []) %}
+                                        <li>• {{ item }}</li>
+                                        {% else %}
+                                        <li>• No strengths recorded.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                                    <h4 class="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-2">Improvement Areas</h4>
+                                    <ul class="space-y-1 text-slate-300">
+                                        {% for item in (latest_resume_analysis.improvements or []) %}
+                                        <li>• {{ item }}</li>
+                                        {% else %}
+                                        <li>• No improvement notes.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3 md:col-span-2">
+                                    <h4 class="text-xs font-semibold uppercase tracking-wider text-violet-400 mb-2">Key Skills</h4>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% for skill in (latest_resume_analysis.technical_skills or []) %}
+                                        <span class="px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs">{{ skill }}</span>
+                                        {% else %}
+                                        <span class="text-slate-400 text-xs">No skill data captured.</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-3 md:col-span-2">
+                                    <h4 class="text-xs font-semibold uppercase tracking-wider text-pink-400 mb-2">Recommendations</h4>
+                                    <ul class="space-y-1 text-slate-300">
+                                        {% for item in (latest_resume_analysis.recommendations or []) %}
+                                        <li>• {{ item }}</li>
+                                        {% else %}
+                                        <li>• No recommendations available.</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="mt-6 border-t border-slate-800 pt-5 text-sm text-slate-400">
+                            Upload a resume to generate an ATS-focused summary, strengths review, and improvement suggestions.
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
 

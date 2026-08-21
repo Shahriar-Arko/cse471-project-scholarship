@@ -1,12 +1,16 @@
+import io
 import json
 import os
 import uuid
+import zipfile
 import requests
+from xml.etree import ElementTree as ET
 from flask import render_template, request, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from app.models.saved_checklist import SavedChecklist, ChecklistItem
+from app.models.resume_analysis import ResumeAnalysis
 from app.models.evaluator import Evaluator
 from app.models.essay import EssaySubmission
 from . import student_bp, groq_client
@@ -24,14 +28,160 @@ SSL_VALIDATE_URL = "https://sandbox.sslcommerz.com/validator/api/validationserve
 # DOCUMENT REVIEW / CHECKLIST ROUTES
 # ==========================================
 
+
+def extract_resume_text(file):
+    filename = secure_filename(file.filename)
+    file_ext = os.path.splitext(filename)[1].lower()
+
+    if file_ext == '.pdf':
+        try:
+            from pypdf import PdfReader
+            pdf_bytes = file.read()
+            file.seek(0)
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            pages = []
+            for page in reader.pages:
+                text = page.extract_text() or ''
+                if text:
+                    pages.append(text)
+            return '\n'.join(pages).strip()
+        except Exception as exc:
+            raise ValueError(f'Unable to read PDF resume: {exc}')
+
+    if file_ext == '.docx':
+        try:
+            docx_bytes = file.read()
+            file.seek(0)
+            with zipfile.ZipFile(io.BytesIO(docx_bytes)) as docx_file:
+                xml_data = docx_file.read('word/document.xml')
+            root = ET.fromstring(xml_data)
+            ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+            paragraphs = []
+            for paragraph in root.findall('.//w:p', ns):
+                texts = ''.join(node.text or '' for node in paragraph.findall('.//w:t', ns))
+                if texts.strip():
+                    paragraphs.append(texts.strip())
+            return '\n'.join(paragraphs).strip()
+        except Exception as exc:
+            raise ValueError(f'Unable to read DOCX resume: {exc}')
+
+    if file_ext == '.txt':
+        text = file.read().decode('utf-8', errors='ignore')
+        file.seek(0)
+        return text.strip()
+
+    raise ValueError('Unsupported file type. Please upload a PDF, DOCX, or TXT resume.')
+
+
+def analyze_resume_text(resume_text):
+    if not groq_client:
+        raise RuntimeError('Groq is not configured. Please add GROQ_API_KEY to your environment.')
+
+    if not resume_text or not resume_text.strip():
+        raise ValueError('The uploaded resume file is empty.')
+
+    prompt = f"""
+    Analyze this resume text for an international graduate admissions applicant.
+    Return ONLY valid JSON with this exact structure:
+    {{
+      "overall_summary": "short paragraph",
+      "strengths": ["strength 1", "strength 2"],
+      "improvements": ["improvement 1", "improvement 2"],
+      "technical_skills": ["skill 1", "skill 2"],
+      "keywords": ["keyword 1", "keyword 2"],
+      "recommendations": ["recommendation 1", "recommendation 2"],
+      "ats_score": 85
+    }}
+
+    Resume text:
+    {resume_text[:20000]}
+    """
+
+    response = groq_client.chat.completions.create(
+        messages=[{'role': 'user', 'content': prompt}],
+        model='llama-3.3-70b-versatile',
+        response_format={'type': 'json_object'},
+        temperature=0.3,
+        max_tokens=1200
+    )
+
+    content = response.choices[0].message.content.strip()
+    return json.loads(content)
+
+
 @student_bp.route('/document_review', methods=['GET'])
 @login_required
 def document_review():
     if current_user.role != 'student':
         return redirect(url_for('dashboard'))
-    
+
     checklists = SavedChecklist.objects(user_id=current_user.id).order_by('-created_at')
-    return render_template('dashboard/document_review.html', checklists=checklists)
+    latest_resume_analysis = ResumeAnalysis.objects(user_id=current_user.id).order_by('-created_at').first()
+    recent_resume_analyses = ResumeAnalysis.objects(user_id=current_user.id).order_by('-created_at').limit(3)
+
+    return render_template(
+        'dashboard/document_review.html',
+        checklists=checklists,
+        latest_resume_analysis=latest_resume_analysis,
+        recent_resume_analyses=recent_resume_analyses
+    )
+
+
+@student_bp.route('/analyze_resume', methods=['POST'])
+@login_required
+def analyze_resume():
+    if current_user.role != 'student':
+        return redirect(url_for('dashboard'))
+
+    if 'resume_file' not in request.files:
+        flash('Please upload a resume file.', 'error')
+        return redirect(url_for('student.document_review'))
+
+    file = request.files['resume_file']
+    if file.filename == '':
+        flash('No file selected.', 'error')
+        return redirect(url_for('student.document_review'))
+
+    try:
+        filename = secure_filename(file.filename)
+        file_ext = os.path.splitext(filename)[1].lower()
+        if file_ext not in ['.pdf', '.docx', '.txt']:
+            flash('Invalid file type. Please upload a PDF, DOCX, or TXT resume.', 'error')
+            return redirect(url_for('student.document_review'))
+
+        resume_text = extract_resume_text(file)
+        analysis_data = analyze_resume_text(resume_text)
+
+        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'resumes')
+        os.makedirs(upload_dir, exist_ok=True)
+        unique_filename = f"{uuid.uuid4().hex}_{filename}"
+        file_path = os.path.join(upload_dir, unique_filename)
+        file.save(file_path)
+
+        analysis = ResumeAnalysis(
+            user_id=current_user.id,
+            file_name=filename,
+            file_path=unique_filename,
+            extracted_text=resume_text[:20000],
+            overall_summary=analysis_data.get('overall_summary', ''),
+            strengths=analysis_data.get('strengths', []),
+            improvements=analysis_data.get('improvements', []),
+            technical_skills=analysis_data.get('technical_skills', []),
+            keywords=analysis_data.get('keywords', []),
+            recommendations=analysis_data.get('recommendations', []),
+            ats_score=int(analysis_data.get('ats_score', 0) or 0)
+        )
+        analysis.save()
+
+        flash('Resume analyzed successfully with Groq AI.', 'success')
+    except ValueError as exc:
+        flash(str(exc), 'error')
+    except RuntimeError as exc:
+        flash(str(exc), 'error')
+    except Exception as exc:
+        flash(f'Unable to analyze the resume: {str(exc)}', 'error')
+
+    return redirect(url_for('student.document_review'))
 
 
 @student_bp.route('/generate_checklist', methods=['POST'])
