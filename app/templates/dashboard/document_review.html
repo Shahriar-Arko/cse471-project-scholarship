@@ -3,33 +3,55 @@
 {% block title %}Document Tools | ScholarMatch{% endblock %}
 
 {% block content %}
-<div class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col relative overflow-hidden">
+<div class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col relative overflow-hidden"
+     x-data="documentStudioApp()">
     <!-- Animated Background Glow (Matching Dashboard) -->
-    <div
-        class="absolute top-0 right-0 -mr-20 -mt-20 w-[40rem] h-[40rem] bg-purple-500/10 rounded-full blur-[100px] animate-pulse">
+    <div class="absolute top-0 right-0 -mr-20 -mt-20 w-[40rem] h-[40rem] bg-purple-500/10 rounded-full blur-[100px] animate-pulse"></div>
+    <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-[30rem] h-[30rem] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse"></div>
+
+    <!-- Toast Notification -->
+    <div x-show="showToast" x-cloak x-transition.opacity.duration.300ms
+         class="fixed bottom-6 right-6 z-[200] bg-slate-900 border border-emerald-500/50 text-emerald-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl">
+        <span class="text-lg">✨</span>
+        <span class="text-sm font-semibold" x-text="toastMessage"></span>
     </div>
 
     <!-- Header Navigation -->
     <div class="border-b border-white/5 bg-white/5 backdrop-blur-xl sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center gap-4">
-            <a href="{{ url_for('dashboard') }}"
-                class="p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:border-purple-500/50 transition-colors text-slate-400 hover:text-white">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-            </a>
-            <div>
-                <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                    <span class="text-purple-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                            </path>
-                        </svg>
-                    </span>
-                    Document Review Studio
-                </h1>
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="{{ url_for('dashboard') }}"
+                    class="p-2 bg-slate-900/50 border border-slate-700/50 rounded-lg hover:border-purple-500/50 transition-colors text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        <span class="text-purple-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                </path>
+                            </svg>
+                        </span>
+                        Document Review Studio
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Faculty Discovery Toggle (Only visible in Research Analyzer Tab) -->
+            <div x-show="activeTab === 'research_analyzer'" x-cloak x-transition.opacity
+                 class="flex items-center gap-3 bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-800 backdrop-blur-xl">
+                <div class="text-right">
+                    <span class="text-xs font-bold text-white block">Faculty Discovery</span>
+                    <span class="text-[10px] text-slate-400" x-text="isVisible ? 'Visible to Professors' : 'Private (Hidden)'"></span>
+                </div>
+                <button @click="toggleVisibility()" type="button"
+                        class="w-11 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer"
+                        :class="isVisible ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'">
+                    <div class="w-4 h-4 rounded-full bg-white shadow-md"></div>
+                </button>
             </div>
         </div>
     </div>
@@ -43,18 +65,19 @@
                 <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 px-3">Application Tools</h3>
 
                 <nav class="space-y-1">
-                    <!-- 1. AI Document Checklist (ACTIVE) -->
-                    <a href="#"
-                        class="flex items-center gap-3 px-3 py-3 rounded-xl bg-purple-500/10 text-purple-400 font-semibold border border-purple-500/20">
+                    <!-- 1. AI Document Checklist (Interactive Tab) -->
+                    <button type="button" @click="activeTab = 'checklist'"
+                        class="w-full flex items-center gap-3 px-3 py-3 rounded-xl font-semibold transition-all text-left cursor-pointer"
+                        :class="activeTab === 'checklist' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
                             </path>
                         </svg>
                         AI Document Checklist
-                    </a>
+                    </button>
 
-                    <!-- 2. SOP Generator (INACTIVE) -->
+                    <!-- 2. SOP Generator -->
                     <a href="{{ url_for('sop.sop_generator_page') }}"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,7 +88,7 @@
                         SOP Generator
                     </a>
 
-                    <!-- 3. AI Resume/CV Analyzer (INACTIVE) -->
+                    <!-- 3. AI Resume/CV Analyzer -->
                     <a href="#"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +99,7 @@
                         Resume Analyzer
                     </a>
 
-                    <!-- 4. AI Essay Review (INACTIVE) -->
+                    <!-- 4. AI Essay Review -->
                     <a href="{{ url_for('student.essay_review') }}"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,17 +110,21 @@
                         Essay Review
                     </a>
 
-                    <!-- 5. Missing Requirement Analyzer (INACTIVE) -->
-                    <a href="#"
-                        class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
-                        </svg>
-                        Missing Requirements
-                    </a>
+                    <!-- 5. Research Interest Analyzer (Interactive Tab) -->
+                    <button type="button" @click="activeTab = 'research_analyzer'"
+                        class="w-full flex items-center justify-between px-3 py-3 rounded-xl font-semibold transition-all text-left cursor-pointer"
+                        :class="activeTab === 'research_analyzer' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-lg shadow-purple-500/10' : 'text-slate-400 hover:text-white hover:bg-white/5'">
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>
+                            </svg>
+                            <span>Research Analyzer</span>
+                        </div>
+                      
+                    </button>
 
-                    <!-- 6. AI Cost Calculator (INACTIVE) -->
+                    <!-- 6. AI Cost Calculator -->
                     <a href="#"
                         class="flex items-center gap-3 px-3 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,201 +138,415 @@
             </div>
         </aside>
 
-        <!-- ==================== RIGHT CONTENT (ACTIVE FEATURE TOOL) ==================== -->
+        <!-- ==================== RIGHT CONTENT WORKSPACE ==================== -->
         <main class="w-full lg:w-3/4">
 
-            <!-- Description Banner -->
-            <div class="mb-8">
-                <h2 class="text-3xl font-bold text-white mb-2">AI Document Checklist</h2>
-                <p class="text-slate-400">Generate and track personalized document requirements for any verified
-                    university worldwide.</p>
+            <!-- ========================================================== -->
+            <!-- 1. TAB VIEW: AI DOCUMENT CHECKLIST                         -->
+            <!-- ========================================================== -->
+            <div x-show="activeTab === 'checklist'" x-transition.opacity>
+                <!-- Description Banner -->
+                <div class="mb-8">
+                    <h2 class="text-3xl font-bold text-white mb-2">AI Document Checklist</h2>
+                    <p class="text-slate-400">Generate and track personalized document requirements for any verified university worldwide.</p>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                    <!-- Generator Form -->
+                    <div class="xl:col-span-5">
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl">
+                            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                                <span class="text-amber-400">⚡</span> Generate New Checklist
+                            </h2>
+                            <form action="{{ url_for('student.generate_checklist') }}" method="POST" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">University Name</label>
+                                    <input type="text" name="university" placeholder="e.g. Harvard University" required
+                                        class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Country Location</label>
+                                    <input type="text" name="country" placeholder="e.g. United States" required
+                                        class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Target Degree</label>
+                                    <select name="degree_level" required
+                                        class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm appearance-none cursor-pointer">
+                                        <option value="Masters Program">Masters Program</option>
+                                        <option value="PhD Program">PhD Program</option>
+                                        <option value="Undergraduate Program">Undergraduate Program</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Field / Major</label>
+                                    <input type="text" name="major" placeholder="e.g. Computer Science" required
+                                        class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
+                                </div>
+
+                                <button type="submit"
+                                    class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 text-sm mt-4 cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    Verify & Generate Checklist
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Saved Checklists -->
+                    <div class="xl:col-span-7 space-y-6">
+                        {% if not checklists %}
+                        <div class="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-12 text-center h-full flex flex-col justify-center">
+                            <div class="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700/50 text-slate-400">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-white mb-1">No Checklists Created Yet</h3>
+                            <p class="text-slate-400 text-sm max-w-md mx-auto">Use the form on the left to enter a university name, country, and major. AI will automatically verify the institution and generate a tailored checklist for you!</p>
+                        </div>
+                        {% else %}
+                        {% for chk in checklists %}
+                        {% set completed_count = chk.items | selectattr('is_completed') | list | length %}
+                        {% set total_count = chk.items | length %}
+                        {% set progress_pct = (completed_count / total_count * 100) | round if total_count > 0 else 0 %}
+
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl transition-all hover:border-slate-700">
+                            <!-- Card Header -->
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold rounded-full">
+                                            {{ chk.degree_level }}
+                                        </span>
+                                        <span class="text-xs text-slate-400">• {{ chk.major }}</span>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-white">{{ chk.university }} <span class="text-slate-400 font-normal">({{ chk.country }})</span></h3>
+                                </div>
+
+                                <form action="{{ url_for('student.delete_checklist', checklist_id=chk.id) }}" method="POST"
+                                    onsubmit="return confirm('Delete this checklist?');">
+                                    <button type="submit"
+                                        class="p-2 text-slate-500 hover:text-rose-400 transition-colors bg-slate-950 rounded-xl cursor-pointer"
+                                        title="Delete Checklist">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="mb-6">
+                                <div class="flex justify-between text-xs font-medium mb-2">
+                                    <span class="text-slate-400">Application Progress</span>
+                                    <span class="{% if progress_pct == 100 %}text-emerald-400{% else %}text-purple-400{% endif %} font-bold"
+                                        id="progress-text-{{ chk.id }}">
+                                        {{ completed_count }} of {{ total_count }} Completed ({{ progress_pct | int }}%)
+                                    </span>
+                                </div>
+                                <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                                    <div id="progress-bar-{{ chk.id }}"
+                                        class="{% if progress_pct == 100 %}bg-emerald-500{% else %}bg-gradient-to-r from-purple-500 to-pink-500{% endif %} h-2.5 rounded-full transition-all duration-500"
+                                        style="width: {{ progress_pct }}%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Document Items Checklist -->
+                            <div class="space-y-3" data-checklist-id="{{ chk.id }}" data-total-items="{{ total_count }}">
+                                {% for item in chk.items %}
+                                <button type="button" onclick="toggleItem(this, '{{ chk.id }}', {{ loop.index0 }})"
+                                    class="w-full text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer 
+                                           {% if item.is_completed %}bg-emerald-950/20 border-emerald-500/30 text-slate-300{% else %}bg-slate-950/40 border-slate-800/80 hover:border-purple-500/30 text-slate-200{% endif %}"
+                                    data-completed="{{ 'true' if item.is_completed else 'false' }}">
+
+                                    <div class="mt-0.5 flex-shrink-0">
+                                        <div class="checkbox-box w-5 h-5 rounded-md border flex items-center justify-center transition-colors 
+                                                    {% if item.is_completed %}bg-emerald-500 border-emerald-500 text-slate-950{% else %}border-slate-600 bg-slate-900{% endif %}">
+                                            <svg class="checkmark-icon w-3.5 h-3.5 font-bold {% if not item.is_completed %}hidden{% endif %}"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="item-name text-sm font-semibold {% if item.is_completed %}line-through text-slate-400{% else %}text-white{% endif %}">
+                                            {{ item.name }}
+                                        </div>
+                                        {% if item.description %}
+                                        <div class="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                                            {{ item.description }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                <!-- Generator Form -->
-                <div class="xl:col-span-5">
-                    <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl">
-                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                            <span class="text-amber-400">⚡</span> Generate New Checklist
-                        </h2>
-                        <form action="{{ url_for('student.generate_checklist') }}" method="POST" class="space-y-4">
-                            <div>
-                                <label
-                                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">University
-                                    Name</label>
-                                <input type="text" name="university" placeholder="e.g. Harvard University" required
-                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
-                            </div>
+            <!-- ========================================================== -->
+            <!-- 2. TAB VIEW: RESEARCH INTEREST ANALYZER                    -->
+            <!-- ========================================================== -->
+            <div x-show="activeTab === 'research_analyzer'" x-cloak x-transition.opacity class="space-y-6">
+                <!-- Description Banner -->
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2 flex items-center gap-2">
+                        <span class="text-purple-400">🧠</span> Research Interest Analyzer
+                    </h2>
+                    <p class="text-slate-400">Dissect your academic foundation and past projects into hyper-specific research niches, skill gaps, and matching funded faculty[cite: 3].</p>
+                </div>
 
-                            <div>
-                                <label
-                                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Country
-                                    Location</label>
-                                <input type="text" name="country" placeholder="e.g. United States" required
-                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
-                            </div>
+                <!-- Input Intake Form Card -->
+                <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl shadow-2xl space-y-4">
+                    <h3 class="text-sm font-bold text-purple-300 flex items-center gap-2">
+                        <span>✨</span> Input Research Profile Details
+                    </h3>
 
+                    <form @submit.prevent="runAnalyzer()" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
-                                <label
-                                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Target
-                                    Degree</label>
-                                <select name="degree_level" required
-                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm appearance-none cursor-pointer">
-                                    <option value="Masters Program">Masters Program</option>
-                                    <option value="PhD Program">PhD Program</option>
-                                    <option value="Undergraduate Program">Undergraduate Program</option>
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Degree Level</label>
+                                <select x-model="analyzerForm.degree_level"
+                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                                    <option value="Bachelors">Bachelors (Undergrad)</option>
+                                    <option value="Masters">Masters (Graduate)</option>
+                                    <option value="PhD">PhD / Doctorate</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label
-                                    class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Field
-                                    / Major</label>
-                                <input type="text" name="major" placeholder="e.g. Computer Science" required
-                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all text-sm">
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Current CGPA</label>
+                                <input type="number" step="0.01" x-model="analyzerForm.cgpa" required placeholder="3.75"
+                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
                             </div>
 
-                            <button type="submit"
-                                class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-purple-600/25 flex items-center justify-center gap-2 text-sm mt-4 cursor-pointer">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
-                                Verify & Generate Checklist
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Saved Checklists -->
-                <div class="xl:col-span-7 space-y-6">
-                    {% if not checklists %}
-                    <div
-                        class="bg-slate-900/40 border border-slate-800/60 rounded-3xl p-12 text-center h-full flex flex-col justify-center">
-                        <div
-                            class="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700/50 text-slate-400">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                        </div>
-                        <h3 class="text-lg font-semibold text-white mb-1">No Checklists Created Yet</h3>
-                        <p class="text-slate-400 text-sm max-w-md mx-auto">Use the form on the left to enter a
-                            university name, country, and major. AI will automatically verify the institution and
-                            generate a tailored checklist for you!</p>
-                    </div>
-                    {% else %}
-                    {% for chk in checklists %}
-                    {% set completed_count = chk.items | selectattr('is_completed') | list | length %}
-                    {% set total_count = chk.items | length %}
-                    {% set progress_pct = (completed_count / total_count * 100) | round if total_count > 0 else 0 %}
-
-                    <div
-                        class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 backdrop-blur-xl transition-all hover:border-slate-700">
-                        <!-- Card Header -->
-                        <div class="flex items-start justify-between mb-4">
                             <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span
-                                        class="px-2.5 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold rounded-full">
-                                        {{ chk.degree_level }}
-                                    </span>
-                                    <span class="text-xs text-slate-400">• {{ chk.major }}</span>
-                                </div>
-                                <h3 class="text-xl font-bold text-white">{{ chk.university }} <span
-                                        class="text-slate-400 font-normal">({{ chk.country }})</span></h3>
-                            </div>
-
-                            <form action="{{ url_for('student.delete_checklist', checklist_id=chk.id) }}" method="POST"
-                                onsubmit="return confirm('Delete this checklist?');">
-                                <button type="submit"
-                                    class="p-2 text-slate-500 hover:text-rose-400 transition-colors bg-slate-950 rounded-xl"
-                                    title="Delete Checklist">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                        </path>
-                                    </svg>
-                                </button>
-                            </form>
-                        </div>
-
-                        <!-- Progress Bar -->
-                        <div class="mb-6">
-                            <div class="flex justify-between text-xs font-medium mb-2">
-                                <span class="text-slate-400">Application Progress</span>
-                                <span
-                                    class="{% if progress_pct == 100 %}text-emerald-400{% else %}text-purple-400{% endif %} font-bold"
-                                    id="progress-text-{{ chk.id }}">
-                                    {{ completed_count }} of {{ total_count }} Completed ({{ progress_pct | int }}%)
-                                </span>
-                            </div>
-                            <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                                <div id="progress-bar-{{ chk.id }}"
-                                    class="{% if progress_pct == 100 %}bg-emerald-500{% else %}bg-gradient-to-r from-purple-500 to-pink-500{% endif %} h-2.5 rounded-full transition-all duration-500"
-                                    style="width: {{ progress_pct }}%"></div>
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Academic Major</label>
+                                <input type="text" x-model="analyzerForm.major" required placeholder="e.g. Computer Science"
+                                    class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
                             </div>
                         </div>
 
-                        <!-- Document Items Checklist -->
-                        <div class="space-y-3" data-checklist-id="{{ chk.id }}" data-total-items="{{ total_count }}">
-                            {% for item in chk.items %}
-                            <button type="button" onclick="toggleItem(this, '{{ chk.id }}', {{ loop.index0 }})"
-                                class="w-full text-left p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer 
-                                            {% if item.is_completed %}bg-emerald-950/20 border-emerald-500/30 text-slate-300{% else %}bg-slate-950/40 border-slate-800/80 hover:border-purple-500/30 text-slate-200{% endif %}"
-                                data-completed="{{ 'true' if item.is_completed else 'false' }}">
-
-                                <div class="mt-0.5 flex-shrink-0">
-                                    <div
-                                        class="checkbox-box w-5 h-5 rounded-md border flex items-center justify-center transition-colors 
-                                                    {% if item.is_completed %}bg-emerald-500 border-emerald-500 text-slate-950{% else %}border-slate-600 bg-slate-900{% endif %}">
-
-                                        <svg class="checkmark-icon w-3.5 h-3.5 font-bold {% if not item.is_completed %}hidden{% endif %}"
-                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
-                                                d="M5 13l4 4L19 7"></path>
-                                        </svg>
-
-                                    </div>
-                                </div>
-                                <div>
-                                    <div
-                                        class="item-name text-sm font-semibold {% if item.is_completed %}line-through text-slate-400{% else %}text-white{% endif %}">
-                                        {{ item.name }}
-                                    </div>
-                                    {% if item.description %}
-                                    <div class="text-xs text-slate-400 mt-0.5 leading-relaxed">
-                                        {{ item.description }}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </button>
-                            {% endfor %}
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Primary Target Research Interest</label>
+                            <textarea x-model="analyzerForm.research_statement" required rows="2"
+                                placeholder="Describe the topics, questions, or problems you wish to investigate (e.g. federated learning for privacy-preserving edge healthcare devices)..."
+                                class="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none leading-relaxed"></textarea>
                         </div>
-                    </div>
-                    {% endfor %}
-                    {% endif %}
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Past Projects / Capstone Thesis Abstracts</label>
+                            <textarea x-model="analyzerForm.project_abstracts" required rows="3"
+                                placeholder="Summarize your past research experiments, datasets used, and methods implemented..."
+                                class="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-none leading-relaxed"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Technical Proficiencies (Comma-separated)</label>
+                            <input type="text" x-model="analyzerForm.technical_skills" placeholder="e.g. PyTorch, ROS2, OpenCV, C++, CUDA, Python"
+                                class="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                        </div>
+
+                        <button type="submit" :disabled="analyzing"
+                            class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/20 transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50">
+                            <span x-text="analyzing ? 'Dissecting Profile with Gemini...' : '✨ Analyze & Map Research Matches'"></span>
+                        </button>
+                    </form>
                 </div>
 
-            </div>
-        </main>
+                <!-- Analysis Loading Animation -->
+                <div x-show="analyzing" class="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                    <div class="inline-block animate-spin w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full mb-3"></div>
+                    <p class="text-xs text-slate-300 font-bold">Computing 768-D Gemini vector embeddings[cite: 3]...</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Cross-referencing faculty publications and open lab positions[cite: 3].</p>
+                </div>
 
+                <!-- Analysis Results Display -->
+                <div x-show="!analyzing && specializations && specializations.length > 0" class="space-y-6" x-cloak>
+                    <!-- 1. Specializations Card -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <span>🎯</span> Recommended Niche Specializations
+                            </h3>
+                            <span class="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">AI Vector Ranked</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="(spec, idx) in specializations" :key="idx">
+                                <div class="bg-black/30 border border-slate-800/80 rounded-2xl p-4 space-y-1.5 hover:border-purple-500/30 transition-all">
+                                    <div class="flex justify-between items-start gap-3">
+                                        <div>
+                                            <span class="text-[10px] font-bold uppercase text-purple-400" x-text="spec.broad_domain"></span>
+                                            <h4 class="text-sm font-bold text-white" x-text="spec.niche"></h4>
+                                        </div>
+                                        <span class="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20" x-text="`${spec.fit_percentage}% Fit`"></span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 italic" x-text="spec.reasoning"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- 2. Strengths & Skill Gap Radar -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 space-y-2">
+                            <h4 class="text-xs font-bold text-emerald-400 uppercase">✅ Identified Strengths</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="s in strengths" :key="s">
+                                    <span class="text-[11px] px-2.5 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-lg" x-text="s"></span>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 space-y-2">
+                            <h4 class="text-xs font-bold text-amber-400 uppercase">⚠️ Prerequisite Skill Gaps</h4>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="g in skillGaps" :key="g">
+                                    <span class="text-[11px] px-2.5 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg" x-text="g"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Matched Funded Professors -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 space-y-4">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <div>
+                                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                    <span>🔬</span> Matched Funded Supervisors
+                                </h3>
+                                <p class="text-xs text-slate-400">Faculty matching your specific research vector profile[cite: 3].</p>
+                            </div>
+                            <a href="{{ url_for('student.professor_finder') }}" class="text-xs text-purple-400 font-bold hover:underline">
+                                View Faculty Directory →
+                            </a>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="prof in matchedProfessors" :key="prof.id">
+                                <div class="bg-black/30 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="text-sm font-bold text-white" x-text="`Prof. ${prof.full_name}`"></h4>
+                                            <template x-if="prof.has_funding">
+                                                <span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded font-bold">🟢 Funded RA/TA</span>
+                                            </template>
+                                        </div>
+                                        <p class="text-xs text-slate-400" x-text="`${prof.title} • ${prof.institution} (${prof.country})`"></p>
+                                        <p class="text-[11px] text-purple-300 mt-0.5" x-text="`Lab: ${prof.lab_name} • ${prof.primary_domain}`"></p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-bold text-emerald-400 px-2.5 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20" x-text="`${prof.fit_score}% Match`"></span>
+                                        <a :href="`{{ url_for('student.professor_finder') }}?search=${encodeURIComponent(prof.full_name)}`"
+                                            class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md">
+                                            ⚡ Send Pitch
+                                        </a>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+
+
+        </main>
     </div>
 </div>
 
 <script>
+    function documentStudioApp() {
+        return {
+            activeTab: 'checklist', // Default active view
+            analyzing: false,
+            showToast: false,
+            toastMessage: '',
+            isVisible: true,
+            analyzerForm: {
+                degree_level: 'Masters',
+                major: '{{ current_user.major or "Computer Science" }}',
+                cgpa: {{ current_user.gpa or 3.5 }},
+                research_statement: '',
+                project_abstracts: '',
+                technical_skills: ''
+            },
+            specializations: [],
+            strengths: [],
+            skillGaps: [],
+            matchedProfessors: [],
+            matchedScholarships: [],
+
+            runAnalyzer() {
+                this.analyzing = true;
+                fetch('/student/api/research-analyzer/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.analyzerForm)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.analyzing = false;
+                    if (data.status === 'success') {
+                        this.specializations = data.analysis.top_specializations || [];
+                        this.strengths = data.analysis.identified_strengths || [];
+                        this.skillGaps = data.analysis.missing_skills || [];
+                        this.matchedProfessors = data.matched_professors || [];
+                        this.matchedScholarships = data.matched_scholarships || [];
+                        this.notify(data.message || 'Profile analyzed successfully!');
+                    } else {
+                        alert(data.error || 'Failed to analyze profile.');
+                    }
+                })
+                .catch(err => {
+                    this.analyzing = false;
+                    console.error(err);
+                    alert('Network connection error.');
+                });
+            },
+
+            toggleVisibility() {
+                fetch('/student/api/research-analyzer/toggle-visibility', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        this.isVisible = data.is_visible;
+                        this.notify(data.message);
+                    }
+                });
+            },
+
+            notify(msg) {
+                this.toastMessage = msg;
+                this.showToast = true;
+                setTimeout(() => { this.showToast = false; }, 3500);
+            }
+        };
+    }
+
+    // CHECKLIST TOGGLE & PROGRESS FUNCTIONS (UNTOUCHED)[cite: 12]
     async function toggleItem(buttonElement, checklistId, itemIdx) {
         if (buttonElement.disabled) return;
 
-        // 1. INSTANT UI UPDATE (Optimistic Update)
         const isCompleted = buttonElement.getAttribute('data-completed') === 'true';
         const newState = !isCompleted;
 
-        // Disable button temporarily to prevent spam clicking
         buttonElement.disabled = true;
 
-        // Function to apply styles so we can use it instantly, and use it to revert if there's an error
         function applyVisualState(state) {
             buttonElement.setAttribute('data-completed', state);
             const checkboxBox = buttonElement.querySelector('.checkbox-box');
@@ -340,30 +581,24 @@
                 itemName.classList.add('text-white');
             }
 
-            // Instantly update the progress bar too
             updateProgressBar(checklistId);
         }
 
-        // Apply the new visual state immediately without waiting for the server
         applyVisualState(newState);
 
-        // 2. BACKGROUND SERVER SYNC
         try {
             const response = await fetch(`/student/toggle_checklist_item/${checklistId}/${itemIdx}`, {
                 method: 'POST'
             });
 
-            // If the server fails, revert the visual change
             if (!response.ok) {
                 console.error('Failed to update on server. Reverting...');
                 applyVisualState(isCompleted);
             }
         } catch (error) {
-            // If the network fails, revert the visual change
             console.error('Network Error:', error);
             applyVisualState(isCompleted);
         } finally {
-            // Re-enable the button
             buttonElement.disabled = false;
         }
     }
@@ -372,7 +607,6 @@
         const container = document.querySelector(`[data-checklist-id="${checklistId}"]`);
         const totalItems = parseInt(container.getAttribute('data-total-items'));
 
-        // Count how many buttons in this specific checklist have data-completed="true"
         const completedButtons = container.querySelectorAll('button[data-completed="true"]');
         const completedCount = completedButtons.length;
 
@@ -384,13 +618,9 @@
         const progressText = document.getElementById(`progress-text-${checklistId}`);
         const progressBar = document.getElementById(`progress-bar-${checklistId}`);
 
-        // Update Text
         progressText.innerText = `${completedCount} of ${totalItems} Completed (${progressPct}%)`;
-
-        // Update Progress Bar Width
         progressBar.style.width = `${progressPct}%`;
 
-        // Update Colors if 100%
         if (progressPct === 100) {
             progressText.classList.replace('text-purple-400', 'text-emerald-400');
             progressBar.classList.replace('bg-gradient-to-r', 'bg-emerald-500');

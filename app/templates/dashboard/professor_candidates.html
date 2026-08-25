@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}AI Candidate Filter - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-6 lg:p-8 relative overflow-hidden" x-data="candidateFilterApp()">
+
+    <!-- Ambient Glow -->
+    <div class="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <!-- Toast Notification -->
+    <div x-show="showToast" x-cloak x-transition.opacity.duration.300ms
+         class="fixed bottom-6 right-6 z-[200] bg-slate-900 border border-emerald-500/50 text-emerald-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl">
+        <span class="text-lg">✨</span>
+        <span class="text-sm font-semibold" x-text="toastMessage"></span>
+    </div>
+
+    <!-- Header -->
+    <div class="max-w-7xl mx-auto mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <a href="{{ url_for('dashboard') }}" class="text-teal-400 text-xs font-bold hover:underline mb-2 inline-block">← Back to Dashboard</a>
+            <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                <span class="text-teal-400">👥</span> AI Candidate Filter & Discovery
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">Prospective researchers ranked by alignment with your lab domain (<strong class="text-white">{{ current_user.primary_domain }}</strong>).</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold px-3 py-1.5 rounded-xl border border-teal-500/30 bg-teal-500/10 text-teal-300">
+                {{ candidates|length }} Visible Candidates Indexed
+            </span>
+        </div>
+    </div>
+
+    <!-- Candidate Cards Grid -->
+    <div class="max-w-7xl mx-auto space-y-6">
+        {% if candidates %}
+            <div class="grid grid-cols-1 gap-6">
+                {% for c in candidates %}
+                <div class="bg-slate-900/60 border border-slate-800 hover:border-teal-500/40 rounded-3xl p-6 shadow-xl backdrop-blur-md flex flex-col md:flex-row justify-between gap-6 transition-all">
+                    
+                    <div class="space-y-3 flex-1">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="px-3 py-1 bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-lg text-xs font-bold">
+                                {{ c.degree_level }} in {{ c.major }}
+                            </span>
+                            <span class="text-xs font-bold px-2.5 py-1 bg-slate-800 text-emerald-400 rounded-lg border border-slate-700">
+                                📊 CGPA: {{ c.cgpa }}
+                            </span>
+                            <span class="text-xs font-extrabold px-3 py-1 bg-emerald-500/15 text-emerald-300 rounded-full border border-emerald-500/30">
+                                🎯 {{ c.compatibility_score }}% Match to Your Lab
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-bold text-white">{{ c.student_name }}</h3>
+                            <p class="text-xs text-slate-400">{{ c.student_email }}</p>
+                        </div>
+
+                        <!-- Top Niche Tags -->
+                        {% if c.top_niches %}
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            {% for niche in c.top_niches %}
+                            <span class="text-xs px-2.5 py-1 bg-purple-500/15 text-purple-300 border border-purple-500/30 rounded-lg font-medium">
+                                🧬 {{ niche }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Research & Projects Snippet -->
+                        <div class="bg-black/30 p-3.5 rounded-2xl border border-slate-800/80 text-xs text-slate-300 leading-relaxed">
+                            <strong class="text-slate-400 block mb-1">Target Statement & Projects:</strong>
+                            <p class="italic line-clamp-2">"{{ c.research_statement }}"</p>
+                        </div>
+
+                        <!-- Skills -->
+                        {% if c.technical_skills %}
+                        <div class="flex flex-wrap gap-1 pt-1">
+                            {% for skill in c.technical_skills %}
+                            <span class="text-[10px] px-2 py-0.5 bg-black/40 text-slate-400 border border-slate-800 rounded">{{ skill }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex flex-col justify-between items-end border-t md:border-t-0 md:border-l border-slate-800 pt-4 md:pt-0 md:pl-6 min-w-[200px]">
+                        <div class="text-right">
+                            <span class="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                                Open to Outreach
+                            </span>
+                        </div>
+
+                        <!-- OUTREACH BUTTON STATE -->
+                        <div>
+                            <!-- State 1: Already Outreached (Disabled) -->
+                            <template x-if="isOutreached('{{ c.student_id }}', {{ 'true' if c.is_outreached else 'false' }})">
+                                <button type="button" disabled
+                                        class="w-full md:w-auto px-5 py-3 bg-slate-800/80 text-teal-400 border border-teal-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed opacity-90 mt-4 shadow-sm">
+                                    <span>✓</span>
+                                    <span>Outreached</span>
+                                </button>
+                            </template>
+
+                            <!-- State 2: Not Yet Outreached (Active) -->
+                            <template x-if="!isOutreached('{{ c.student_id }}', {{ 'true' if c.is_outreached else 'false' }})">
+                                <button type="button" @click="openInviteModal('{{ c.student_id }}', '{{ c.student_name }}', '{{ c.student_email }}')"
+                                        class="w-full md:w-auto px-5 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 cursor-pointer mt-4">
+                                    <span>✉️</span>
+                                    <span>Invite to Apply for RA/TA</span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                <span class="text-5xl block mb-3">🔍</span>
+                <h3 class="text-xl font-bold text-white mb-2">No Visible Candidates Currently Indexed</h3>
+                <p class="text-slate-400 text-sm max-w-md mx-auto">As students analyze their research interests and enable Faculty Discovery, they will appear here ranked by compatibility to your lab.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ==================== INVITE MODAL ==================== -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl p-8 relative" x-transition.scale>
+            <button @click="showModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
+
+            <h2 class="text-2xl font-black text-white mb-1">Invite Researcher to Apply</h2>
+            <p class="text-xs text-slate-400 mb-6">Send an email invitation directly to <strong class="text-teal-400" x-text="inviteForm.student_name"></strong>.</p>
+
+            <form @submit.prevent="sendInvitation()" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subject</label>
+                    <input type="text" x-model="inviteForm.subject" required class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-xs focus:border-teal-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Invitation Message Body</label>
+                    <textarea x-model="inviteForm.body" required rows="6" class="w-full bg-black/40 border border-slate-700 rounded-xl p-3 text-white text-xs focus:border-teal-500 focus:outline-none resize-none leading-relaxed"></textarea>
+                </div>
+
+                <button type="submit" :disabled="sending" class="w-full py-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-teal-500/20 transition-all cursor-pointer disabled:opacity-50">
+                    <span x-text="sending ? 'Dispatching Invitation...' : 'Send Direct Lab Invitation →'"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function candidateFilterApp() {
+    return {
+        showToast: false,
+        toastMessage: '',
+        showModal: false,
+        sending: false,
+        outreachedStudentIds: [],
+        inviteForm: { student_id: '', student_name: '', student_email: '', subject: '', body: '' },
+
+        isOutreached(studentId, defaultOutreached) {
+            return defaultOutreached || this.outreachedStudentIds.includes(studentId);
+        },
+
+        openInviteModal(studentId, name, email) {
+            this.inviteForm = {
+                student_id: studentId,
+                student_name: name,
+                student_email: email,
+                subject: `Research Opportunity Invitation: {{ current_user.lab_name or current_user.primary_domain }}`,
+                body: `Dear ${name},\n\nI reviewed your research profile and was impressed by your project background and focus. I believe your skills align with active funded research in my laboratory.\n\nI encourage you to explore our open positions or submit an application for an RA/TA appointment on ScholarMatch.\n\nBest regards,\nProf. {{ current_user.full_name }}\n{{ current_user.institution }}`
+            };
+            this.showModal = true;
+        },
+
+        sendInvitation() {
+            this.sending = true;
+            fetch(`/professor/api/candidates/invite/${this.inviteForm.student_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.inviteForm)
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.sending = false;
+                if (data.status === 'success') {
+                    // Mark as outreached immediately in UI
+                    this.outreachedStudentIds.push(this.inviteForm.student_id);
+                    this.showModal = false;
+                    this.notify(data.message);
+                } else {
+                    alert(data.error || 'Failed to send invitation.');
+                }
+            })
+            .catch(err => {
+                this.sending = false;
+                console.error(err);
+                alert('Network error occurred.');
+            });
+        },
+
+        notify(msg) {
+            this.toastMessage = msg;
+            this.showToast = true;
+            setTimeout(() => { this.showToast = false; }, 3500);
+        }
+    };
+}
+</script>
+{% endblock %}
