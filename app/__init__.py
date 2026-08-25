@@ -76,6 +76,11 @@ def create_app(config_name='development'):
         
         # Otherwise, render student dashboard
         return render_template('dashboard/student_dashboard.html')
+
+
+
+    from app.routes.student.analyzer_routes import analyzer_bp
+    app.register_blueprint(analyzer_bp)
         
     @app.route('/dashboard/student')
     @login_required
