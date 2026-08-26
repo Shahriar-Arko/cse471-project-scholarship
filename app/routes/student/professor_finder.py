@@ -1,11 +1,20 @@
-from flask import render_template, request, jsonify, redirect, url_for, flash
+import os
+import time
+from werkzeug.utils import secure_filename
+from flask import render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from mongoengine.queryset.visitor import Q
 
 from app.models.professor import Professor
 from app.models.user import User
 from app.models.pitch import ResearchPitch
+from app.models.vacancy import Vacancy, VacancyApplication
 from . import student_bp
+
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @student_bp.route('/professor-finder', methods=['GET'])
 @login_required
@@ -13,13 +22,11 @@ def professor_finder():
     if current_user.role != 'student':
         return redirect(url_for('dashboard'))
     
-    # Extract unique filter values dynamically from database
     countries = sorted([c for c in set(Professor.objects.distinct('country')) if c])
     institutions = sorted([i for i in set(Professor.objects.distinct('institution')) if i])
     departments = sorted([d for d in set(Professor.objects.distinct('department')) if d])
     domains = sorted([dom for dom in set(Professor.objects.distinct('primary_domain')) if dom])
     
-    # Extract student's bookmarked professor IDs safely
     bookmarked_ids = []
     if hasattr(current_user, 'bookmarked_professors') and current_user.bookmarked_professors:
         for p in current_user.bookmarked_professors:
@@ -42,7 +49,7 @@ def professor_finder():
 @student_bp.route('/api/professors', methods=['GET'])
 @login_required
 def api_get_professors():
-    """Live multi-parameter search & query engine with pitch tracking."""
+    """Directory query engine for faculty discovery."""
     query_text = request.args.get('search', '').strip()
     country = request.args.get('country', '').strip()
     institution = request.args.get('institution', '').strip()
@@ -75,7 +82,6 @@ def api_get_professors():
     if funding_only:
         query &= Q(has_funding=True) & Q(accepting_students=True)
 
-    # 1. Fetch student's bookmarked professor IDs
     student_bookmarked_ids = set()
     if hasattr(current_user, 'bookmarked_professors') and current_user.bookmarked_professors:
         for p in current_user.bookmarked_professors:
@@ -85,7 +91,6 @@ def api_get_professors():
             except Exception:
                 continue
 
-    # 2. Fetch all pitches submitted by this student
     student_pitches = {}
     for pitch in ResearchPitch.objects(student=current_user.id):
         try:
@@ -106,7 +111,6 @@ def api_get_professors():
     for prof in professors:
         prof_id_str = str(prof.id)
         
-        # Serialize publications
         pubs = []
         for pub in prof.publications:
             pubs.append({
@@ -117,7 +121,6 @@ def api_get_professors():
                 'citations_count': pub.citations_count
             })
 
-        # Serialize grants
         grants = []
         for g in prof.grant_projects:
             grants.append({
@@ -127,7 +130,6 @@ def api_get_professors():
                 'status': g.status
             })
 
-        # Attach pitch status if the student has applied
         pitch_info = None
         prof_pitch = student_pitches.get(prof_id_str)
         if prof_pitch:
@@ -168,10 +170,164 @@ def api_get_professors():
     return jsonify({'status': 'success', 'count': len(results), 'professors': results})
 
 
+# =========================================================================
+# STUDENT RA/TA VACANCY DISCOVERY & APPLICATION (WITH FILE UPLOADS)
+# =========================================================================
+
+@student_bp.route('/api/vacancies', methods=['GET'])
+@login_required
+def get_student_vacancies():
+    """Fetches active RA/TA vacancies with remaining slot calculation and student status."""
+    try:
+        vacancies = Vacancy.objects(is_active=True).order_by('-created_at')
+        
+        my_applications = {}
+        for app in VacancyApplication.objects(student=current_user.id):
+            if app.vacancy:
+                my_applications[str(app.vacancy.id)] = app
+        
+        # Safely parse student CGPA
+        student_gpa_raw = getattr(current_user, 'gpa', 3.5)
+        try:
+            student_gpa_float = float(student_gpa_raw) if student_gpa_raw else 3.5
+        except (ValueError, TypeError):
+            student_gpa_float = 3.5
+
+        results = []
+        for v in vacancies:
+            prof = v.professor
+            if not prof:
+                continue
+
+            app = my_applications.get(str(v.id))
+            min_cgpa_req = float(v.min_cgpa or 3.0)
+            
+            # Calculate remaining slots: total openings minus accepted/offered applicants
+            offered_count = VacancyApplication.objects(vacancy=v, status='Offered').count()
+            total_openings = int(v.openings_count or 1)
+            remaining_slots = max(0, total_openings - offered_count)
+            is_full = (remaining_slots <= 0)
+
+            results.append({
+                'id': str(v.id),
+                'title': v.title,
+                'position_type': v.position_type,
+                'department': v.department,
+                'domain': v.domain,
+                'funding_stipend': v.funding_stipend,
+                'openings_count': total_openings,
+                'remaining_slots': remaining_slots,
+                'is_full': is_full,
+                'min_cgpa': min_cgpa_req,
+                'is_eligible': student_gpa_float >= min_cgpa_req,
+                'student_gpa': student_gpa_float,
+                'target_degrees': v.target_degrees or ['Masters', 'PhD'],
+                'required_skills': v.required_skills or [],
+                'description': v.description,
+                'created_at': v.created_at.strftime('%b %d, %Y') if v.created_at else 'Recent',
+                'professor': {
+                    'id': str(prof.id),
+                    'full_name': prof.full_name,
+                    'institution': prof.institution,
+                    'lab_name': prof.lab_name or 'Research Lab',
+                    'avatar_url': getattr(prof, 'avatar_url', None)
+                },
+                'application_status': app.status if app else None,
+                'applied_at': app.created_at.strftime('%b %d, %Y') if app and app.created_at else None
+            })
+
+        return jsonify({'status': 'success', 'vacancies': results})
+    except Exception as e:
+        print(f"[VACANCIES API ERROR]: {e}")
+        return jsonify({'status': 'error', 'error': str(e)}), 500
+
+
+@student_bp.route('/api/vacancies/apply/<vacancy_id>', methods=['POST'])
+@login_required
+def apply_for_vacancy(vacancy_id):
+    """Submits a direct application with up to 3 document attachments."""
+    if current_user.role != 'student':
+        return jsonify({'error': 'Unauthorized: Only students can apply.'}), 403
+
+    try:
+        vacancy = Vacancy.objects(id=vacancy_id, is_active=True).first()
+        if not vacancy:
+            return jsonify({'error': 'Position is no longer active or available.'}), 404
+
+        # Check if all slots are filled
+        offered_count = VacancyApplication.objects(vacancy=vacancy, status='Offered').count()
+        if offered_count >= vacancy.openings_count:
+            return jsonify({'error': 'All vacancy positions for this lab opening have been filled.'}), 400
+
+        student = User.objects(id=current_user.id).first()
+        if not student:
+            return jsonify({'error': 'Student account not found.'}), 404
+
+        # Duplicate check
+        existing = VacancyApplication.objects(student=student, vacancy=vacancy).first()
+        if existing:
+            return jsonify({'error': 'You have already submitted an application for this position.'}), 400
+
+        cover_letter = request.form.get('cover_letter', '').strip()
+        if not cover_letter:
+            return jsonify({'error': 'Statement of interest / Cover letter cannot be empty.'}), 400
+
+        # Handle up to 3 document uploads
+        uploaded_docs = []
+        files = request.files.getlist('documents')
+        if len(files) > 3:
+            return jsonify({'error': 'A maximum of 3 documents can be uploaded.'}), 400
+
+        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'applications')
+        os.makedirs(upload_dir, exist_ok=True)
+
+        for file in files:
+            if file and file.filename and allowed_file(file.filename):
+                original_name = secure_filename(file.filename)
+                unique_name = f"{int(time.time())}{str(current_user.id)[:6]}{original_name}"
+                file_path = os.path.join(upload_dir, unique_name)
+                file.save(file_path)
+                
+                uploaded_docs.append({
+                    'name': original_name,
+                    'url': f"/static/uploads/applications/{unique_name}"
+                })
+
+        student_gpa_val = None
+        raw_gpa = getattr(student, 'gpa', None)
+        if raw_gpa is not None:
+            try:
+                student_gpa_val = float(raw_gpa)
+            except (ValueError, TypeError):
+                student_gpa_val = None
+
+        application = VacancyApplication(
+            vacancy=vacancy,
+            student=student,
+            professor=vacancy.professor,
+            cover_letter=cover_letter,
+            documents=uploaded_docs,
+            applicant_cgpa=student_gpa_val,
+            applicant_major=getattr(student, 'major', 'Computer Science') or 'General',
+            applicant_degree=getattr(student, 'degree_level', 'Masters') or 'Masters',
+            status='Submitted'
+        )
+        application.save()
+
+        prof_name = vacancy.professor.full_name if vacancy.professor else "the faculty member"
+        return jsonify({
+            'status': 'success',
+            'message': f'Application and {len(uploaded_docs)} document(s) successfully delivered to Prof. {prof_name}!'
+        }), 200
+
+    except Exception as e:
+        print(f"[VACANCY APPLY ERROR]: {e}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
 @student_bp.route('/api/professors/bookmark/<prof_id>', methods=['POST'])
 @login_required
 def toggle_bookmark(prof_id):
-    """Toggle bookmark / shortlist status for student research pipeline."""
     if current_user.role != 'student':
         return jsonify({'error': 'Unauthorized'}), 403
 
@@ -213,7 +369,6 @@ def toggle_bookmark(prof_id):
 @student_bp.route('/api/professors/pitch/<prof_id>', methods=['POST'])
 @login_required
 def submit_pitch(prof_id):
-    """Handles structured research pitch submissions with instant feedback serialization."""
     if current_user.role != 'student':
         return jsonify({'error': 'Unauthorized: Only students can submit pitches.'}), 403
 
@@ -223,20 +378,13 @@ def submit_pitch(prof_id):
             return jsonify({'error': 'Professor not found.'}), 404
 
         student = User.objects(id=current_user.id).first()
-        if not student:
-            return jsonify({'error': 'Student user not found.'}), 404
-
         data = request.get_json(silent=True) or {}
         target_domain = data.get('target_domain', '').strip()
         pitch_text = data.get('pitch_text', '').strip()
 
         if not target_domain or not pitch_text:
             return jsonify({'error': 'Please select a research area and write your pitch.'}), 400
-            
-        if len(pitch_text) > 1500:
-            return jsonify({'error': 'Pitch exceeds the 1500 character limit.'}), 400
 
-        # Prevent duplicate pitch
         existing_pitch = ResearchPitch.objects(student=student, professor=professor).first()
         if existing_pitch:
             return jsonify({'error': f'You have already submitted a research pitch to {professor.full_name}.'}), 400
