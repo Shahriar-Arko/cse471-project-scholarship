@@ -76,6 +76,10 @@ def create_app(config_name='development'):
 
         if current_user.role == 'admin':
             return redirect(url_for('admin.admin_dashboard'))
+            
+        # ADD THIS: Properly route Evaluators
+        if current_user.role == 'evaluator':
+            return redirect(url_for('evaluator_dashboard'))
         
         # Otherwise, render student dashboard
         return render_template('dashboard/student_dashboard.html')

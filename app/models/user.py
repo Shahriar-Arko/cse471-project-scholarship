@@ -35,18 +35,25 @@ class User(UserMixin, db.Document):
 
 @login_manager.user_loader
 def load_user(user_id):
-    try:
-        user = User.objects(id=user_id).first()
-        if user:
-            return user
-            
-        professor = Professor.objects(id=user_id).first()
-        if professor:
-            return professor
-            
-        admin = Admin.objects(id=user_id).first()
-        if admin:
-            return admin
-    except Exception:
-        pass
+    from app.models.user import User
+    from app.models.professor import Professor
+    from app.models.evaluator import Evaluator
+    from app.models.admin import Admin
+
+    # Check Student collection
+    user = User.objects(id=user_id).first()
+    if user: return user
+    
+    # Check Professor collection
+    prof = Professor.objects(id=user_id).first()
+    if prof: return prof
+    
+    # Check Evaluator collection (THIS IS LIKELY WHAT YOU WERE MISSING)
+    evaluator = Evaluator.objects(id=user_id).first()
+    if evaluator: return evaluator
+
+    # Check Admin collection
+    admin = Admin.objects(id=user_id).first()
+    if admin: return admin
+
     return None

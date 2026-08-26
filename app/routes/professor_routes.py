@@ -14,7 +14,7 @@ from app.services.research_analyzer_service import cosine_similarity, get_gemini
 
 professor_bp = Blueprint('professor', __name__, url_prefix='/professor')
 
-def send_student_email_async(to_email, student_name, prof_name, subject, message_body):
+def send_student_email_async(to_email, student_name, prof_name, prof_email, subject, message_body):
     """Sends direct email from professor to student asynchronously via Gmail SMTP."""
     try:
         sender_email = os.environ.get('MAIL_USERNAME')
@@ -29,6 +29,7 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
         msg['From'] = f"{prof_name} via ScholarMatch <{sender_email}>"
         msg['To'] = to_email
         msg['Reply-To'] = prof_email
+        
         html_content = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -39,8 +40,7 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
             <p style="color: #334155; font-size: 15px;">Dear <strong>{student_name}</strong>,</p>
             
             <p style="color: #334155; font-size: 15px; line-height: 1.6;">
-                <strong>Prof. {prof_name}</strong> has updated the status of your research application or sent you a message:
-                <strong>Prof. {prof_name}</strong> has reached out to you regarding research collaboration:
+                <strong>Prof. {prof_name}</strong> has reached out to you regarding your research application:
             </p>
             
             <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border-left: 4px solid #059669; margin: 20px 0; color: #1e293b; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">
@@ -62,7 +62,6 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
             
     except Exception as e:
         print(f"[PROFESSOR EMAIL ERROR]: {e}")
-
 
 # =========================================================================
 # STEP 5: AI CANDIDATE FILTER & INVITATIONS
@@ -217,9 +216,9 @@ def send_email_to_student(pitch_id):
         return jsonify({'error': 'Subject and message body are required.'}), 400
 
     threading.Thread(
-        target=send_student_email_async,
-        args=(student.email, student.full_name, current_user.full_name, subject, body)
-    ).start()
+            target=send_student_email_async,
+            args=(student.email, student.full_name, current_user.full_name, current_user.email, subject, body)
+        ).start()
 
     return jsonify({'status': 'success', 'message': f'Email successfully sent to {student.email}!'})
 
@@ -228,10 +227,7 @@ def send_email_to_student(pitch_id):
 # RESEARCH POSTINGS MANAGER (RA/TA VACANCIES & APPLICANT PIPELINE)
 # =========================================================================
 
-@professor_bp.route('/postings')
-@login_required
-def manage_postings():
-    """Renders the Research Postings Manager interface."""
+
 @professor_bp.route('/postings')
 @login_required
 def manage_postings():
@@ -392,14 +388,13 @@ def update_application_status(application_id):
     # Async notification email if shortlisted or offered
     student = application.student
     if student and student.email and new_status in ['Shortlisted', 'Offered']:
-        msg_body = f"Congratulations {student.full_name},\n\nProf. {current_user.full_name} has moved your application for '{application.vacancy.title}' to the status: '{new_status}'.\n\nPlease log in to your ScholarMatch student dashboard to review details."
-        threading.Thread(
-            target=send_student_email_async,
-            args=(student.email, student.full_name, current_user.full_name, f"Update on Position: {application.vacancy.title}", msg_body)
-        ).start()
+            msg_body = f"Congratulations {student.full_name},\n\nProf. {current_user.full_name} has moved your application for '{application.vacancy.title}' to the status: '{new_status}'.\n\nPlease log in to your ScholarMatch student dashboard to review details."
+            threading.Thread(
+                target=send_student_email_async,
+                args=(student.email, student.full_name, current_user.full_name, current_user.email, f"Update on Position: {application.vacancy.title}", msg_body)
+            ).start()
 
     return jsonify({'status': 'success', 'message': f'Applicant status updated to {new_status}.'})
-            'remaining_slots': max(0, v.openings_count - offered)
-        })
+
 
     return render_template('dashboard/professor_postings.html', vacancies_data=vacancy_list)
