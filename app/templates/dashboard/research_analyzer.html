@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block title %}Research Interest Analyzer - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-6 lg:p-8 relative overflow-hidden" x-data="researchAnalyzerApp()">
+
+    <!-- Ambient Glows -->
+    <div class="absolute top-[-10%] right-[-10%] w-[38rem] h-[38rem] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] w-[38rem] h-[38rem] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <!-- Toast Notification -->
+    <div x-show="showToast" x-cloak x-transition.opacity.duration.300ms
+         class="fixed bottom-6 right-6 z-[200] bg-slate-900 border border-emerald-500/50 text-emerald-400 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl">
+        <span class="text-lg">✨</span>
+        <span class="text-sm font-semibold" x-text="toastMessage"></span>
+    </div>
+
+    <!-- Header Navigation -->
+    <div class="max-w-7xl mx-auto mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <a href="{{ url_for('dashboard') }}" class="p-2 bg-slate-900/60 border border-slate-800 rounded-xl hover:border-purple-500/50 transition-colors text-slate-400 hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </a>
+                <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                    <span class="text-purple-400">🧠</span> Research Interest Analyzer
+                </h1>
+            </div>
+            <p class="text-slate-400 text-sm">Dissect your academic foundation, projects, and skills into niche specializations, matching funded faculty, and scholarships.</p>
+        </div>
+
+        <!-- Step 5 Visibility Toggle -->
+        <div class="flex items-center gap-3 bg-slate-900/80 p-3 rounded-2xl border border-slate-800 backdrop-blur-xl">
+            <div class="text-right">
+                <span class="text-xs font-bold text-white block">Faculty Discovery</span>
+                <span class="text-[11px] text-slate-400" x-text="isVisible ? 'Visible in Professor Pool' : 'Private (Hidden)'"></span>
+            </div>
+            <button @click="toggleVisibility()" 
+                    class="w-12 h-6 flex items-center rounded-full p-1 transition-colors cursor-pointer"
+                    :class="isVisible ? 'bg-emerald-500 justify-end' : 'bg-slate-700 justify-start'">
+                <div class="w-4 h-4 rounded-full bg-white shadow-md"></div>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- ==================== LEFT: INPUT FORM ==================== -->
+        <div class="lg:col-span-5 space-y-6">
+            <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-5">
+                <div>
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <span>📝</span> Academic & Project Profile
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Our Gemini AI extracts semantic embeddings to map your optimal research fields.</p>
+                </div>
+
+                <form @submit.prevent="runAnalyzer()" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Degree Level</label>
+                            <select x-model="form.degree_level" class="w-full bg-black/40 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs focus:border-purple-500 focus:outline-none">
+                                <option value="Bachelors">Bachelors (Undergrad)</option>
+                                <option value="Masters">Masters (Graduate)</option>
+                                <option value="PhD">PhD / Doctorate</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Current CGPA</label>
+                            <input type="number" step="0.01" x-model="form.cgpa" required placeholder="3.75" class="w-full bg-black/40 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs focus:border-purple-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Academic Major</label>
+                        <input type="text" x-model="form.major" required placeholder="e.g. Computer Science, Robotics, Bioengineering" class="w-full bg-black/40 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs focus:border-purple-500 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Primary Target Research Interest</label>
+                        <textarea x-model="form.research_statement" required rows="3" placeholder="Explain the exact challenges, methods, or domains you wish to research (e.g., decentralized deep learning on resource-constrained edge devices)..." class="w-full bg-black/40 border border-slate-700 rounded-xl p-3 text-white text-xs focus:border-purple-500 focus:outline-none resize-none leading-relaxed"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Past Projects / Capstone Thesis Abstracts</label>
+                        <textarea x-model="form.project_abstracts" required rows="4" placeholder="Summarize your undergraduate thesis, semester research projects, datasets used, and experimental results..." class="w-full bg-black/40 border border-slate-700 rounded-xl p-3 text-white text-xs focus:border-purple-500 focus:outline-none resize-none leading-relaxed"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Technical Proficiencies (Comma-separated)</label>
+                        <input type="text" x-model="form.technical_skills" placeholder="e.g. PyTorch, ROS2, C++, OpenCV, CUDA, TensorRT" class="w-full bg-black/40 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-xs focus:border-purple-500 focus:outline-none">
+                    </div>
+
+                    <button type="submit" :disabled="analyzing" class="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/20 transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50">
+                        <span x-text="analyzing ? 'Dissecting Profile with Gemini...' : '✨ Analyze & Map Research Matches'"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==================== RIGHT: RESULTS DASHBOARD ==================== -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- Loading State -->
+            <div x-show="analyzing" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                <div class="inline-block animate-spin w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full mb-3"></div>
+                <h3 class="text-base font-bold text-white">Dissecting Semantic Vector Embeddings...</h3>
+                <p class="text-slate-400 text-xs mt-1">Cross-referencing faculty publications and grant databases with Gemini.</p>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="!analyzing && (!specializations || specializations.length === 0)" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                <span class="text-5xl block mb-3">🧬</span>
+                <h3 class="text-lg font-bold text-white mb-1">No Research Dissection Available Yet</h3>
+                <p class="text-slate-400 text-xs max-w-md mx-auto">Fill out your academic background and project summary on the left to extract your hyper-specific research niches.</p>
+            </div>
+
+            <!-- Results Display -->
+            <div x-show="!analyzing && specializations && specializations.length > 0" class="space-y-6" x-cloak>
+                
+                <!-- 1. Top Niche Specializations -->
+                <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2">
+                            <span>🎯</span> Recommended Niche Specializations
+                        </h3>
+                        <span class="text-[11px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">AI Vector Ranked</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="(spec, idx) in specializations" :key="idx">
+                            <div class="bg-black/30 border border-slate-800/80 rounded-2xl p-4 space-y-2 hover:border-purple-500/40 transition-all">
+                                <div class="flex justify-between items-start gap-3">
+                                    <div>
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-purple-400" x-text="spec.broad_domain"></span>
+                                        <h4 class="text-sm font-bold text-white" x-text="spec.niche"></h4>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20" x-text="`${spec.fit_percentage}% Fit`"></span>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-300 leading-relaxed italic" x-text="spec.reasoning"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 2. Skill Gap Radar & Strengths -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl backdrop-blur-xl space-y-3">
+                        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>✅</span> Identified Strengths
+                        </h4>
+                        <div class="flex flex-wrap gap-1.5">
+                            <template x-for="str in strengths" :key="str">
+                                <span class="text-[11px] px-2.5 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-lg font-medium" x-text="str"></span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl backdrop-blur-xl space-y-3">
+                        <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>⚠️</span> Prerequisite Skill Gaps
+                        </h4>
+                        <div class="flex flex-wrap gap-1.5">
+                            <template x-for="gap in skillGaps" :key="gap">
+                                <span class="text-[11px] px-2.5 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg font-medium" x-text="gap"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Matching Faculty & Lab Opportunities -->
+                <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <span>🔬</span> Matched Funded Supervisors
+                            </h3>
+                            <p class="text-xs text-slate-400">Faculty working directly in your recommended specializations.</p>
+                        </div>
+                        <a href="{{ url_for('student.professor_finder') }}" class="text-xs text-purple-400 font-bold hover:underline">View All Faculty →</a>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="prof in matchedProfessors" :key="prof.id">
+                            <div class="bg-black/30 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-sm font-bold text-white" x-text="`Prof. ${prof.full_name}`"></h4>
+                                        <template x-if="prof.has_funding">
+                                            <span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded font-bold">🟢 Funded RA/TA</span>
+                                        </template>
+                                    </div>
+                                    <p class="text-xs text-slate-400 mt-0.5" x-text="`${prof.title} • ${prof.institution} (${prof.country})`"></p>
+                                    <p class="text-[11px] text-purple-300 mt-1" x-text="`Lab: ${prof.lab_name} • ${prof.primary_domain}`"></p>
+                                </div>
+
+                                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                    <span class="text-xs font-bold text-emerald-400 px-2.5 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20" x-text="`${prof.fit_score}% Match`"></span>
+                                    <a :href="`{{ url_for('student.professor_finder') }}?search=${encodeURIComponent(prof.full_name)}`" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md">
+                                        ⚡ Send Pitch
+                                    </a>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- 4. Matching Scholarships -->
+                <div class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-xl space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <span>🎓</span> Matched Specialization Scholarships
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <template x-for="sch in matchedScholarships" :key="sch.id">
+                            <div class="bg-black/30 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold text-amber-400" x-text="`Due: ${sch.deadline}`"></span>
+                                    <h4 class="text-xs font-bold text-white mt-1" x-text="sch.title"></h4>
+                                </div>
+                                <span class="text-[11px] text-slate-400 mt-2 block" x-text="`Award: ${sch.amount}`"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+function researchAnalyzerApp() {
+    return {
+        analyzing: false,
+        showToast: false,
+        toastMessage: '',
+        isVisible: {{ 'true' if profile and profile.is_visible_to_faculty else 'false' }},
+        form: {
+            degree_level: "{{ profile.degree_level if profile else 'Masters' }}",
+            major: "{{ profile.major if profile else (current_user.major or 'Computer Science') }}",
+            cgpa: {{ profile.cgpa if profile else (current_user.gpa or 3.5) }},
+            research_statement: `{{ profile.research_statement if profile else '' }}`,
+            project_abstracts: `{{ profile.project_abstracts if profile else '' }}`,
+            technical_skills: `{{ profile.technical_skills|join(', ') if profile else '' }}`
+        },
+        specializations: {{ profile.top_specializations|tojson if profile and profile.top_specializations else '[]' }},
+        strengths: {{ profile.identified_strengths|tojson if profile and profile.identified_strengths else '[]' }},
+        skillGaps: {{ profile.missing_skills|tojson if profile and profile.missing_skills else '[]' }},
+        matchedProfessors: {{ matched_professors|tojson if matched_professors else '[]' }},
+        matchedScholarships: {{ matched_scholarships|tojson if matched_scholarships else '[]' }},
+
+        runAnalyzer() {
+            this.analyzing = true;
+            fetch('/student/api/research-analyzer/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.form)
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.analyzing = false;
+                if (data.status === 'success') {
+                    this.specializations = data.analysis.top_specializations || [];
+                    this.strengths = data.analysis.identified_strengths || [];
+                    this.skillGaps = data.analysis.missing_skills || [];
+                    this.matchedProfessors = data.matched_professors || [];
+                    this.matchedScholarships = data.matched_scholarships || [];
+                    this.notify(data.message);
+                } else {
+                    alert(data.error || 'Failed to analyze profile.');
+                }
+            })
+            .catch(err => {
+                this.analyzing = false;
+                console.error(err);
+                alert('Network connection error.');
+            });
+        },
+
+        toggleVisibility() {
+            fetch('/student/api/research-analyzer/toggle-visibility', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    this.isVisible = data.is_visible;
+                    this.notify(data.message);
+                }
+            });
+        },
+
+        notify(msg) {
+            this.toastMessage = msg;
+            this.showToast = true;
+            setTimeout(() => { this.showToast = false; }, 3500);
+        }
+    };
+}
+</script>
+{% endblock %}
