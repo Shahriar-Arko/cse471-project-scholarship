@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import tempfile
 import requests
 from flask import render_template, request, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
@@ -309,7 +310,7 @@ def submit_essay():
             flash('Invalid file format. Please upload a PDF or DOCX.', 'error')
             return redirect(url_for('student.essay_review'))
             
-        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'essays')
+        upload_dir = '/tmp' if os.environ.get('VERCEL') else os.path.join('app', 'static', 'uploads', 'essays')
         os.makedirs(upload_dir, exist_ok=True)
         
         unique_filename = f"{uuid.uuid4().hex}_{filename}"
