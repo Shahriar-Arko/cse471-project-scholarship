@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Professor Finder - ScholarMatch{% endblock %}
+{% block title %}Professor & Lab Finder - ScholarMatch{% endblock %}
 
 {% block content %}
 <div class="min-h-screen bg-[#0B1120] text-slate-100 p-6 lg:p-8 relative overflow-hidden" x-data="professorFinderApp()">
@@ -28,14 +28,24 @@
                     <span class="text-emerald-400">🔬</span> Professor Finder
                 </h1>
             </div>
-            <p class="text-slate-400 text-sm">Discover prospective graduate research supervisors, laboratory affiliations, and monitor faculty response decisions in real-time.</p>
+            <p class="text-slate-400 text-sm">Discover prospective graduate research supervisors, laboratory affiliations, and apply directly to funded RA/TA positions.</p>
         </div>
 
         <!-- Mode Indicator Badge -->
         <div class="flex items-center gap-2">
             <span class="text-xs font-semibold px-3 py-1.5 rounded-xl border"
-                  :class="activeTab === 'search' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-purple-500/10 text-purple-400 border-purple-500/30'">
-                <span x-text="activeTab === 'search' ? '🔍 Faculty Search' : '📬 Response Tracker Mode'"></span>
+                  :class="{
+                      'bg-emerald-500/10 text-emerald-400 border-emerald-500/30': activeTab === 'search',
+                      'bg-purple-500/10 text-purple-400 border-purple-500/30': activeTab === 'responses',
+                      'bg-amber-500/10 text-amber-400 border-amber-500/30': activeTab === 'shortlist',
+                      'bg-teal-500/10 text-teal-400 border-teal-500/30': activeTab === 'rata'
+                  }">
+                <span x-text="
+                    activeTab === 'search' ? '🔍 Faculty Search' :
+                    activeTab === 'responses' ? '📬 Response Tracker' :
+                    activeTab === 'shortlist' ? '⭐ Shortlisted Pipeline' :
+                    '💼 Funded RA/TA Vacancy Portal'
+                "></span>
             </span>
         </div>
     </div>
@@ -77,10 +87,10 @@
                               x-text="pitchedCount"></span>
                     </button>
 
-                    <!-- Shortlist Toggle -->
-                    <button @click="toggleShortlist()"
+                    <!-- Option 3: Shortlisted Professor -->
+                    <button @click="switchTab('shortlist')"
                             class="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left cursor-pointer"
-                            :class="filters.bookmarked_only 
+                            :class="activeTab === 'shortlist' 
                                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-lg shadow-amber-500/10' 
                                 : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
                         <div class="flex items-center gap-3">
@@ -88,11 +98,26 @@
                             <span>Shortlisted Professor</span>
                         </div>
                     </button>
+
+                    <!-- Option 4: Apply for RA/TA -->
+                    <button @click="switchTab('rata')"
+                            class="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all text-left cursor-pointer"
+                            :class="activeTab === 'rata' 
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg shadow-emerald-500/10' 
+                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'">
+                        <div class="flex items-center gap-3">
+                            <span class="text-lg">💼</span>
+                            <span>Apply for RA/TA</span>
+                        </div>
+                        <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            Funded
+                        </span>
+                    </button>
                 </div>
             </div>
 
-            <!-- 2. FILTER DIRECTORY (Only visible in 'search' tab) -->
-            <div x-show="activeTab === 'search'" x-transition.opacity
+            <!-- 2. FILTER DIRECTORY -->
+            <div x-show="activeTab === 'search' || activeTab === 'shortlist'" x-transition.opacity
                  class="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl backdrop-blur-xl sticky top-6">
                 
                 <div class="flex justify-between items-center mb-6">
@@ -109,8 +134,8 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Keyword Search</label>
                         <input type="text" x-model="filters.search" @input.debounce.300ms="fetchProfessors()"
-                               placeholder="e.g., Andrew Ng, NLP, Robotics, CMU..."
-                               class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none placeholder-slate-600">
+                               placeholder="e.g., Andrew Ng, NLP, Robotics..."
+                               class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
                     </div>
 
                     <div>
@@ -134,58 +159,20 @@
                             {% endfor %}
                         </select>
                     </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Host Institution</label>
-                        <select x-model="filters.institution" @change="fetchProfessors()"
-                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
-                            <option value="">All Universities</option>
-                            {% for inst in institutions %}
-                            <option value="{{ inst }}">{{ inst }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Academic Department</label>
-                        <select x-model="filters.department" @change="fetchProfessors()"
-                                class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-2.5 text-white text-sm focus:border-emerald-500 focus:outline-none">
-                            <option value="">All Departments</option>
-                            {% for dept in departments %}
-                            <option value="{{ dept }}">{{ dept }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="pt-2 border-t border-slate-800">
-                        <label class="flex items-center gap-3 cursor-pointer select-none">
-                            <input type="checkbox" x-model="filters.funding_only" @change="fetchProfessors()"
-                                   class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-black/40 border-slate-700">
-                            <span class="text-sm font-semibold text-emerald-300">Active RA/TA Funding Available Only</span>
-                        </label>
-                    </div>
                 </div>
             </div>
 
-            <!-- 3. OUTREACH SUMMARY CARD (Visible in 'responses' tab) -->
-            <div x-show="activeTab === 'responses'" x-transition.opacity
-                 class="bg-slate-900/70 border border-purple-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-xl">
-                <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <span>📊</span> Pitch Decision Status
+            <!-- 3. RA/TA INFO CARD -->
+            <div x-show="activeTab === 'rata'" x-transition.opacity
+                 class="bg-slate-900/70 border border-emerald-500/30 rounded-3xl p-6 shadow-xl backdrop-blur-xl">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span>💡</span> Application Instructions
                 </h3>
-                <div class="space-y-3 text-xs">
-                    <div class="flex justify-between p-3 bg-black/40 border border-slate-800 rounded-xl">
-                        <span class="text-slate-400">Total Pitches Sent</span>
-                        <span class="font-bold text-white" x-text="pitchedCount"></span>
-                    </div>
-                    <div class="flex justify-between p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                        <span class="text-emerald-300">Shortlisted / Accepted</span>
-                        <span class="font-bold text-emerald-400" x-text="professors.filter(p => p.pitch_info && p.pitch_info.status === 'shortlisted').length"></span>
-                    </div>
-                    <div class="flex justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                        <span class="text-amber-300">Pending Faculty Review</span>
-                        <span class="font-bold text-amber-400" x-text="professors.filter(p => p.pitch_info && p.pitch_info.status === 'pending').length"></span>
-                    </div>
+                <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                    Openings update in real time as faculty offer positions to candidates. You may attach up to <strong>3 documents</strong> (CV, Transcripts, Writing Sample) with your pitch.
+                </p>
+                <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 font-semibold">
+                    Applications close automatically when all openings for a position reach 0 remaining slots.
                 </div>
             </div>
 
@@ -196,295 +183,288 @@
             
             <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h2 class="text-xl font-bold text-white" x-text="activeTab === 'search' ? 'Faculty Directory' : 'Your Submitted Research Pitches & Responses'"></h2>
-                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400" x-text="`${professors.length} Records Found`"></span>
+                    <h2 class="text-xl font-bold text-white" 
+                        x-text="
+                            activeTab === 'search' ? 'Faculty Directory' : 
+                            activeTab === 'responses' ? 'Your Submitted Research Pitches & Responses' :
+                            activeTab === 'shortlist' ? 'Shortlisted Faculty Pipeline' :
+                            'Funded Graduate Research & Teaching Assistantships (RA / TA)'
+                        "></h2>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400" 
+                          x-text="activeTab === 'rata' ? `${vacancies.length} Positions Available` : `${professors.length} Records Found`"></span>
                 </div>
             </div>
 
-            <!-- Loading State -->
-            <div x-show="loading" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
-                <div class="inline-block animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-3"></div>
-                <p class="text-slate-400 text-sm">Querying faculty database...</p>
-            </div>
+            <!-- ==================== TAB 1, 2, 3: PROFESSOR CARDS ==================== -->
+            <div x-show="activeTab !== 'rata'">
+                <div x-show="loading" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                    <div class="inline-block animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-3"></div>
+                    <p class="text-slate-400 text-sm">Querying faculty database...</p>
+                </div>
 
-            <!-- Empty State -->
-            <div x-show="!loading && professors.length === 0" x-cloak
-                 class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
-                <span class="text-5xl block mb-4">📭</span>
-                <h3 class="text-xl font-bold text-white mb-2" x-text="activeTab === 'search' ? 'No Matching Faculty Found' : 'No Pitches Submitted Yet'"></h3>
-                <p class="text-slate-400 text-sm max-w-md mx-auto mb-6" x-text="activeTab === 'search' ? 'Try broadening your search criteria or resetting filters.' : 'You have not submitted any expressions of interest to professors yet. Use the Search Faculty tab to discover labs and send your first pitch!'"></p>
-                <button @click="activeTab === 'search' ? resetFilters() : switchTab('search')" 
-                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer"
-                        x-text="activeTab === 'search' ? 'Reset Filters' : 'Explore Faculty Directory →'"></button>
-            </div>
+                <div x-show="!loading && professors.length === 0" x-cloak class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                    <span class="text-5xl block mb-4">📭</span>
+                    <h3 class="text-xl font-bold text-white mb-2">No Matching Faculty Found</h3>
+                    <button @click="switchTab('search')" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg cursor-pointer">
+                        Explore Faculty Directory →
+                    </button>
+                </div>
 
-            <!-- Professor Cards Grid -->
-            <div x-show="!loading && professors.length > 0" class="space-y-6" x-cloak>
-                <template x-for="prof in professors" :key="prof.id">
-                    <div class="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-md flex flex-col md:flex-row gap-6 relative group"
-                         :class="{ 'border-purple-500/40 bg-slate-900/90': prof.pitch_info && activeTab === 'responses' }">
-                        
-                        <!-- Avatar Column -->
-                        <div class="flex-shrink-0 flex md:flex-col items-center justify-start">
-                            <template x-if="prof.avatar_url">
-                                <img :src="prof.avatar_url" class="w-20 h-20 rounded-2xl object-cover border-2 border-slate-700 shadow-md">
-                            </template>
-                            <template x-if="!prof.avatar_url">
-                                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600/30 to-teal-800/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-3xl font-black shadow-inner">
-                                    <span x-text="prof.full_name[0]"></span>
-                                </div>
-                            </template>
-                        </div>
-
-                        <!-- Info Column -->
-                        <div class="flex-1 flex flex-col justify-between">
-                            <div>
-                                <!-- Top Header -->
-                                <div class="flex justify-between items-start mb-1">
-                                    <div>
-                                        <h3 class="text-xl font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer" @click="openProfileModal(prof)" x-text="prof.full_name"></h3>
-                                        <p class="text-xs text-slate-400 font-medium" x-text="`${prof.title} • ${prof.department}`"></p>
-                                    </div>
-                                    <button @click="toggleBookmark(prof)"
-                                            :title="prof.is_bookmarked ? 'Remove from Shortlist' : 'Add to Shortlist Pipeline'"
-                                            class="p-2 rounded-xl border transition-all text-sm cursor-pointer"
-                                            :class="prof.is_bookmarked ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:text-white'">
-                                        <span x-text="prof.is_bookmarked ? '★' : '☆'"></span>
-                                    </button>
-                                </div>
-
-                                <!-- Institution & Funding Badges -->
-                                <div class="flex flex-wrap items-center gap-2 my-2.5">
-                                    <span class="text-xs px-3 py-1 bg-slate-800 text-slate-300 rounded-full border border-slate-700 font-medium" x-text="prof.institution"></span>
-                                    <span class="text-xs px-2.5 py-1 bg-slate-800/60 text-slate-400 rounded-full border border-slate-700/60" x-text="`📍 ${prof.country}`"></span>
-                                    
-                                    <template x-if="prof.has_funding && prof.accepting_students">
-                                        <span class="text-xs px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full font-bold flex items-center gap-1">
-                                            <span>🟢</span> Active Funding (RA/TA)
-                                        </span>
-                                    </template>
-                                </div>
-
-                                <!-- Domain Chips -->
-                                <div class="flex flex-wrap gap-1.5 my-3">
-                                    <span class="text-xs font-semibold px-2.5 py-0.5 bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 rounded-lg" x-text="prof.primary_domain"></span>
-                                    <template x-for="tag in prof.research_interests.slice(0, 3)" :key="tag">
-                                        <span class="text-xs px-2 py-0.5 bg-black/40 text-slate-400 border border-slate-800 rounded-lg" x-text="tag"></span>
-                                    </template>
-                                </div>
-
-                                <!-- PITCH HISTORY & ACCEPTANCE BANNER (Only in Check Responses Tab) -->
-                                <template x-if="prof.pitch_info && activeTab === 'responses'">
-                                    <div class="my-3 space-y-2.5">
-                                        
-                                        <!-- Shortlisted / Accepted Alert Banner -->
-                                        <template x-if="prof.pitch_info.status === 'shortlisted'">
-                                            <div class="p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3">
-                                                <div class="flex items-center gap-2.5">
-                                                    <span class="text-lg">🎉</span>
-                                                    <div>
-                                                        <p class="text-xs font-bold text-emerald-300">Pitch Accepted & Shortlisted!</p>
-                                                        <p class="text-[11px] text-emerald-400/80">Prof. <span x-text="prof.full_name"></span> has shortlisted your application. Check your email for direct communication.</p>
-                                                    </div>
-                                                </div>
-                                                <span class="px-2.5 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-lg">Accepted</span>
-                                            </div>
-                                        </template>
-
-                                        <!-- Sent Pitch Details -->
-                                        <div class="p-3.5 bg-black/40 border border-slate-800 rounded-2xl">
-                                            <div class="flex justify-between items-center text-xs mb-1.5">
-                                                <span class="text-slate-400 font-semibold">Your Pitch to Prof. <span class="text-white" x-text="prof.full_name"></span> (<span class="text-purple-300 font-bold" x-text="prof.pitch_info.target_domain"></span>)</span>
-                                                <span class="text-slate-500 text-[11px]" x-text="`Sent: ${prof.pitch_info.created_at}`"></span>
-                                            </div>
-                                            <p class="text-xs text-slate-300 italic line-clamp-2" x-text="`“${prof.pitch_info.pitch_text}”`"></p>
-                                        </div>
+                <div x-show="!loading && professors.length > 0" class="space-y-6" x-cloak>
+                    <template x-for="prof in professors" :key="prof.id">
+                        <div class="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-md flex flex-col md:flex-row gap-6 relative group"
+                             :class="{ 'border-purple-500/40 bg-slate-900/90': prof.pitch_info && activeTab === 'responses' }">
+                            
+                            <div class="flex-shrink-0 flex md:flex-col items-center justify-start">
+                                <template x-if="prof.avatar_url">
+                                    <img :src="prof.avatar_url" class="w-20 h-20 rounded-2xl object-cover border-2 border-slate-700 shadow-md">
+                                </template>
+                                <template x-if="!prof.avatar_url">
+                                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-600/30 to-teal-800/30 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-3xl font-black shadow-inner">
+                                        <span x-text="prof.full_name[0]"></span>
                                     </div>
                                 </template>
                             </div>
 
-                            <!-- Bottom Row: Lab & Action Controls -->
-                            <div class="pt-3 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                <div class="text-xs text-slate-400 flex items-center gap-1.5">
-                                    <span>🔬</span>
-                                    <span class="font-medium text-slate-300" x-text="prof.lab_name"></span>
-                                </div>
-
-                                <div class="flex items-center gap-2 w-full sm:w-auto">
-                                    <button @click="openProfileModal(prof)" class="flex-1 sm:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer">
-                                        View Full Profile →
-                                    </button>
-                                    
-                                    <!-- Dynamic Action Button / Status Pills -->
-                                    <template x-if="!prof.pitch_info">
-                                        <button @click="openPitchForm(prof)" class="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
-                                            <span>📝</span>
-                                            <span>Send Pitch</span>
-                                        </button>
-                                    </template>
-
-                                    <template x-if="prof.pitch_info">
+                            <div class="flex-1 flex flex-col justify-between">
+                                <div>
+                                    <div class="flex justify-between items-start mb-1">
                                         <div>
-                                            <template x-if="prof.pitch_info.status === 'pending'">
-                                                <span class="px-3.5 py-2 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                                                    <span>⏳</span> Pitch Pending Review
-                                                </span>
-                                            </template>
+                                            <h3 class="text-xl font-bold text-white hover:text-emerald-400 transition-colors cursor-pointer" @click="openProfileModal(prof)" x-text="prof.full_name"></h3>
+                                            <p class="text-xs text-slate-400 font-medium" x-text="`${prof.title} • ${prof.department}`"></p>
+                                        </div>
+                                        <button @click="toggleBookmark(prof)" class="p-2 rounded-xl border transition-all text-sm cursor-pointer"
+                                                :class="prof.is_bookmarked ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800/60 text-slate-400 border-slate-700 hover:text-white'">
+                                            <span x-text="prof.is_bookmarked ? '★' : '☆'"></span>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center gap-2 my-2.5">
+                                        <span class="text-xs px-3 py-1 bg-slate-800 text-slate-300 rounded-full border border-slate-700 font-medium" x-text="prof.institution"></span>
+                                        <span class="text-xs px-2.5 py-1 bg-slate-800/60 text-slate-400 rounded-full border border-slate-700/60" x-text="`📍 ${prof.country}`"></span>
+                                        <template x-if="prof.has_funding">
+                                            <span class="text-xs px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-full font-bold">🟢 Active RA/TA Funding</span>
+                                        </template>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-1.5 my-3">
+                                        <span class="text-xs font-semibold px-2.5 py-0.5 bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 rounded-lg" x-text="prof.primary_domain"></span>
+                                        <template x-for="tag in prof.research_interests.slice(0, 3)" :key="tag">
+                                            <span class="text-xs px-2 py-0.5 bg-black/40 text-slate-400 border border-slate-800 rounded-lg" x-text="tag"></span>
+                                        </template>
+                                    </div>
+
+                                    <template x-if="prof.pitch_info && activeTab === 'responses'">
+                                        <div class="my-3 space-y-2.5">
                                             <template x-if="prof.pitch_info.status === 'shortlisted'">
-                                                <span class="px-3.5 py-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-pulse">
-                                                    <span>🟢</span> Shortlisted by Faculty
-                                                </span>
+                                                <div class="p-3 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl flex items-center justify-between gap-3">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <span class="text-lg">🎉</span>
+                                                        <div>
+                                                            <p class="text-xs font-bold text-emerald-300">Pitch Accepted & Shortlisted!</p>
+                                                            <p class="text-[11px] text-emerald-400/80">Prof. <span x-text="prof.full_name"></span> has shortlisted your application.</p>
+                                                        </div>
+                                                    </div>
+                                                    <span class="px-2.5 py-1 bg-emerald-500 text-slate-950 font-black text-[10px] uppercase rounded-lg">Accepted</span>
+                                                </div>
                                             </template>
-                                            <template x-if="prof.pitch_info.status === 'declined'">
-                                                <span class="px-3.5 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                                                    <span>⚪</span> Declined
-                                                </span>
-                                            </template>
+                                            <div class="p-3.5 bg-black/40 border border-slate-800 rounded-2xl">
+                                                <div class="flex justify-between items-center text-xs mb-1.5">
+                                                    <span class="text-slate-400 font-semibold">Your Pitch (<span class="text-purple-300 font-bold" x-text="prof.pitch_info.target_domain"></span>)</span>
+                                                    <span class="text-slate-500 text-[11px]" x-text="`Sent: ${prof.pitch_info.created_at}`"></span>
+                                                </div>
+                                                <p class="text-xs text-slate-300 italic" x-text="`“${prof.pitch_info.pitch_text}”`"></p>
+                                            </div>
                                         </div>
                                     </template>
                                 </div>
+
+                                <div class="pt-3 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                    <span class="text-xs text-slate-400" x-text="`🔬 ${prof.lab_name}`"></span>
+                                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                                        <button @click="openProfileModal(prof)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer">
+                                            View Full Profile →
+                                        </button>
+                                        <template x-if="!prof.pitch_info">
+                                            <button @click="openPitchForm(prof)" class="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                                📝 Send Pitch
+                                            </button>
+                                        </template>
+                                        <template x-if="prof.pitch_info">
+                                            <span class="px-3.5 py-2 rounded-xl text-xs font-bold"
+                                                  :class="prof.pitch_info.status === 'shortlisted' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/10 text-amber-300 border border-amber-500/30'">
+                                                <span x-text="prof.pitch_info.status === 'shortlisted' ? '🟢 Shortlisted by Faculty' : '⏳ Pitch Pending Review'"></span>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </template>
+                </div>
+            </div>
 
-                    </div>
-                </template>
+            <!-- ==================== TAB 4: RA/TA VACANCIES PORTAL ==================== -->
+            <div x-show="activeTab === 'rata'" x-transition.opacity>
+                <div x-show="loadingVacancies" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                    <div class="inline-block animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-3"></div>
+                    <p class="text-slate-400 text-sm">Querying active RA/TA vacancies & laboratory openings...</p>
+                </div>
+
+                <div x-show="!loadingVacancies && vacancies.length === 0" class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+                    <span class="text-5xl block mb-4">💼</span>
+                    <h3 class="text-xl font-bold text-white mb-2">No Funded Positions Currently Open</h3>
+                    <p class="text-slate-400 text-sm max-w-md mx-auto mb-6">Faculty are actively updating laboratory funding. You can still submit an open pitch to professors in the Directory.</p>
+                </div>
+
+                <!-- Vacancies List with Slot Counter & Dynamic Availability -->
+                <div x-show="!loadingVacancies && vacancies.length > 0" class="space-y-6">
+                    <template x-for="vac in vacancies" :key="vac.id">
+                        <div class="bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-md space-y-4"
+                             :class="{ 'opacity-60 grayscale-[40%]': vac.is_full && !vac.application_status }">
+                            
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800 pb-4">
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-black uppercase" x-text="vac.position_type"></span>
+                                    <h3 class="text-lg font-bold text-white" x-text="vac.title"></h3>
+                                    
+                                    <!-- Live Remaining Openings Badge -->
+                                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold border"
+                                          :class="vac.remaining_slots > 0 ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'"
+                                          x-text="vac.remaining_slots > 0 ? `🔥 ${vac.remaining_slots} / ${vac.openings_count} Openings Left` : '❌ 0 Slots Left (Filled)'"></span>
+                                </div>
+                                <span class="px-3 py-1 bg-slate-800 text-emerald-300 border border-slate-700 rounded-xl text-xs font-bold" x-text="`💰 ${vac.funding_stipend}`"></span>
+                            </div>
+
+                            <p class="text-xs text-slate-300 leading-relaxed" x-text="vac.description"></p>
+
+                            <!-- Professor Snapshot -->
+                            <div class="flex flex-wrap items-center justify-between gap-4 bg-black/30 p-3.5 rounded-2xl border border-slate-800/80 text-xs">
+                                <div>
+                                    <span class="text-slate-500 font-medium">Laboratory & Faculty:</span>
+                                    <span class="text-white font-bold ml-1" x-text="`Prof. ${vac.professor.full_name} (${vac.professor.institution})`"></span>
+                                </div>
+                                
+                                <div class="flex items-center gap-3">
+                                    <span :class="vac.is_eligible ? 'text-emerald-400' : 'text-amber-400'" class="font-bold flex items-center gap-1">
+                                        <span x-text="vac.is_eligible ? '✅ Eligible' : '⚠️ Min CGPA gap'"></span>
+                                        <span class="text-[11px] text-slate-400" x-text="`(Min: ${vac.min_cgpa})`"></span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Skills & Action Area -->
+                            <div class="flex flex-wrap items-center justify-between gap-4 pt-1">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="skill in vac.required_skills" :key="skill">
+                                        <span class="text-[11px] px-2.5 py-0.5 bg-black/40 text-slate-400 border border-slate-800 rounded-md" x-text="skill"></span>
+                                    </template>
+                                </div>
+
+                                <!-- Action Buttons / Disabled when slots reach 0 -->
+                                <div>
+                                    <!-- When Not Applied and Slots are Available -->
+                                    <template x-if="!vac.application_status && !vac.is_full">
+                                        <button @click="openApplyModal(vac)" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer">
+                                            Apply for Position →
+                                        </button>
+                                    </template>
+
+                                    <!-- When Not Applied and Position is Filled (0 Openings) -->
+                                    <template x-if="!vac.application_status && vac.is_full">
+                                        <button disabled class="px-5 py-2.5 bg-slate-800 text-slate-500 border border-slate-700 rounded-xl text-xs font-bold cursor-not-allowed">
+                                            🚫 Position Filled / Closed
+                                        </button>
+                                    </template>
+                                    
+                                    <!-- When Student has Already Submitted -->
+                                    <template x-if="vac.application_status">
+                                        <span class="px-4 py-2 rounded-xl text-xs font-bold border"
+                                              :class="{
+                                                  'bg-amber-500/10 text-amber-300 border-amber-500/30': vac.application_status === 'Submitted' || vac.application_status === 'Under Review',
+                                                  'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse': vac.application_status === 'Shortlisted' || vac.application_status === 'Offered',
+                                                  'bg-slate-800 text-slate-500 border-slate-700': vac.application_status === 'Rejected'
+                                              }">
+                                            <span x-text="`Status: ${vac.application_status}`"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                        </div>
+                    </template>
+                </div>
             </div>
 
         </main>
     </div>
 
-    <!-- ==================== PROFESSOR PROFILE MODAL ==================== -->
-    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
-        <div @click.away="showModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative" x-transition.scale>
-            
-            <button @click="showModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
+    <!-- ==================== DIRECT RA/TA APPLICATION MODAL (WITH 3 FILE ATTACHMENTS) ==================== -->
+    <div x-show="showApplyModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showApplyModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl p-8 relative" x-transition.scale>
+            <button @click="showApplyModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
 
-            <template x-if="selectedProf">
-                <div class="space-y-6">
-                    <div class="flex items-start gap-5 border-b border-slate-800 pb-6">
-                        <template x-if="selectedProf.avatar_url">
-                            <img :src="selectedProf.avatar_url" class="w-20 h-20 rounded-2xl object-cover border border-slate-700">
-                        </template>
-                        <template x-if="!selectedProf.avatar_url">
-                            <div class="w-20 h-20 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center text-3xl font-black">
-                                <span x-text="selectedProf.full_name[0]"></span>
+            <template x-if="selectedVacancy">
+                <div>
+                    <div class="mb-6 border-b border-slate-800 pb-4">
+                        <span class="text-xs font-extrabold uppercase text-emerald-400">Position Application</span>
+                        <h2 class="text-2xl font-black text-white mt-1" x-text="selectedVacancy.title"></h2>
+                        <p class="text-xs text-slate-400 mt-1" x-text="`Laboratory of Prof. ${selectedVacancy.professor.full_name} • ${selectedVacancy.professor.institution}`"></p>
+                    </div>
+
+                    <form @submit.prevent="submitVacancyApplication()" class="space-y-4">
+                        <!-- Cover Letter Box -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Statement of Interest & Relevant Experience</label>
+                            <textarea x-model="applyForm.cover_letter" required rows="5" placeholder="Explain why you are qualified for this funded role, your previous research projects, and your technical proficiency..."
+                                      class="w-full bg-black/40 border border-slate-700 rounded-xl p-3.5 text-white focus:border-emerald-500 focus:outline-none resize-none text-xs leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- Multi-Document Upload (Max 3) -->
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Attach Supporting Documents (Max 3)</label>
+                                <span class="text-[11px] font-semibold text-slate-500" x-text="`${selectedFiles.length} / 3 Files Attached`"></span>
                             </div>
-                        </template>
 
-                        <div class="flex-1">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-black text-white" x-text="selectedProf.full_name"></h2>
-                                    <p class="text-sm text-slate-400" x-text="`${selectedProf.title} • ${selectedProf.department}`"></p>
-                                    <p class="text-xs text-emerald-400 font-semibold mt-1" x-text="`${selectedProf.institution}, ${selectedProf.country}`"></p>
+                            <div class="p-4 bg-black/40 border border-dashed border-slate-700 hover:border-emerald-500/50 rounded-2xl text-center transition-all cursor-pointer relative">
+                                <input type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" @change="handleFileSelection($event)"
+                                       :disabled="selectedFiles.length >= 3"
+                                       class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                                <div class="space-y-1">
+                                    <span class="text-2xl block">📎</span>
+                                    <p class="text-xs font-bold text-slate-300">Click or Drag to Upload Documents</p>
+                                    <p class="text-[10px] text-slate-500">PDF, DOCX, or Images (CV, Transcripts, Writing Sample)</p>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-black/30 border border-slate-800 rounded-2xl p-4">
-                            <span class="text-xs font-bold text-slate-500 uppercase">Laboratory Affiliation</span>
-                            <h4 class="text-sm font-bold text-white mt-1" x-text="selectedProf.lab_name"></h4>
-                            <template x-if="selectedProf.lab_website">
-                                <a :href="selectedProf.lab_website" target="_blank" class="text-xs text-emerald-400 hover:underline mt-1 inline-block">Visit Lab Website ↗</a>
-                            </template>
-                        </div>
-                        <div class="bg-black/30 border border-slate-800 rounded-2xl p-4">
-                            <span class="text-xs font-bold text-slate-500 uppercase">Funding & Openings</span>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-sm font-bold text-emerald-400" x-text="selectedProf.has_funding ? '🟢 Actively Sponsoring Students' : '⚪ Self-Funded Applicants'"></span>
-                            </div>
-                            <p class="text-xs text-slate-400 mt-1" x-text="`Sponsorship Types: ${selectedProf.funding_types.join(', ') || 'RA / TA'}`"></p>
-                        </div>
-                    </div>
-
-                    <div class="bg-black/20 border border-slate-800 rounded-2xl p-4" x-show="selectedProf.bio_summary">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Research Overview</h4>
-                        <p class="text-sm text-slate-300 leading-relaxed" x-text="selectedProf.bio_summary"></p>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <span>📚</span> Recent Publication Highlights
-                        </h4>
-                        <div class="space-y-2.5">
-                            <template x-for="pub in selectedProf.publications" :key="pub.title">
-                                <div class="bg-black/30 border border-slate-800/80 rounded-xl p-3.5 flex justify-between items-center gap-4 hover:border-slate-700">
-                                    <div>
-                                        <p class="text-sm font-semibold text-slate-200" x-text="pub.title"></p>
-                                        <p class="text-xs text-slate-400 mt-0.5" x-text="`${pub.venue || 'Academic Journal'} (${pub.year || 'Recent'}) • ${pub.citations_count || 0} Citations`"></p>
+                            <!-- Selected File Chips -->
+                            <div class="space-y-2 mt-3" x-show="selectedFiles.length > 0">
+                                <template x-for="(file, idx) in selectedFiles" :key="idx">
+                                    <div class="flex justify-between items-center p-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs">
+                                        <div class="flex items-center gap-2 truncate pr-2">
+                                            <span class="text-emerald-400">📄</span>
+                                            <span class="text-slate-200 truncate" x-text="file.name"></span>
+                                            <span class="text-slate-500 text-[10px]" x-text="`(${(file.size / 1024).toFixed(0)} KB)`"></span>
+                                        </div>
+                                        <button type="button" @click="removeFile(idx)" class="text-rose-400 hover:text-rose-300 font-bold px-2 py-0.5 rounded hover:bg-rose-500/10">✕</button>
                                     </div>
-                                    <template x-if="pub.citation_url">
-                                        <a :href="pub.citation_url" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-lg text-xs font-bold flex-shrink-0">
-                                            Citation ↗
-                                        </a>
-                                    </template>
-                                </div>
-                            </template>
+                                </template>
+                            </div>
                         </div>
-                    </div>
 
-                    <div x-show="selectedProf.grant_projects && selectedProf.grant_projects.length > 0">
-                        <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <span>🏛️</span> Active Grant Initiatives
-                        </h4>
-                        <div class="space-y-2">
-                            <template x-for="grant in selectedProf.grant_projects" :key="grant.title">
-                                <div class="bg-black/30 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
-                                    <div>
-                                        <p class="text-xs font-bold text-slate-300" x-text="grant.title"></p>
-                                        <p class="text-xs text-slate-500" x-text="`Sponsor: ${grant.agency} • Value: ${grant.amount}`"></p>
-                                    </div>
-                                    <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold rounded" x-text="grant.status"></span>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="pt-6 border-t border-slate-800 flex justify-between items-center">
-                        <button @click="toggleBookmark(selectedProf)"
-                                class="px-5 py-3 rounded-xl border text-xs font-bold flex items-center gap-2 cursor-pointer"
-                                :class="selectedProf.is_bookmarked ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-slate-800 text-white border-slate-700'">
-                            <span x-text="selectedProf.is_bookmarked ? '★ Shortlisted' : '☆ Add to Research Pipeline'"></span>
+                        <button type="submit" :disabled="submittingApp" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer">
+                            <span x-text="submittingApp ? 'Submitting Application...' : 'Submit Application to Faculty →'"></span>
                         </button>
-
-                        <template x-if="!selectedProf.pitch_info">
-                            <button @click="openPitchForm(selectedProf)" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer">
-                                <span>📝 Submit Research Pitch</span>
-                                <span>→</span>
-                            </button>
-                        </template>
-
-                        <template x-if="selectedProf.pitch_info">
-                            <div>
-                                <template x-if="selectedProf.pitch_info.status === 'pending'">
-                                    <span class="px-5 py-3 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-2">
-                                        <span>⏳</span> Pitch Pending Review
-                                    </span>
-                                </template>
-                                <template x-if="selectedProf.pitch_info.status === 'shortlisted'">
-                                    <span class="px-5 py-3 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-bold flex items-center gap-2">
-                                        <span>🟢</span> Shortlisted by Faculty
-                                    </span>
-                                </template>
-                                <template x-if="selectedProf.pitch_info.status === 'declined'">
-                                    <span class="px-5 py-3 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
-                                        <span>⚪</span> Pitch Declined
-                                    </span>
-                                </template>
-                            </div>
-                        </template>
-                    </div>
+                    </form>
                 </div>
             </template>
         </div>
     </div>
 
-    <!-- ==================== RESEARCH PITCH MODAL ==================== -->
+    <!-- ==================== PITCH MODAL ==================== -->
     <div x-show="showPitchModal" x-cloak class="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
         <div @click.away="showPitchModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl p-8 relative" x-transition.scale>
-            
             <button @click="showPitchModal = false" class="absolute top-6 right-6 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white border border-slate-700 cursor-pointer">✕</button>
 
             <template x-if="selectedProf">
@@ -494,12 +474,7 @@
                         <p class="text-sm text-slate-400">Applying to <span class="text-emerald-400 font-semibold" x-text="selectedProf.full_name"></span>'s Lab</p>
                     </div>
 
-                    <div x-show="pitchError" x-cloak class="mb-4 p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl flex items-center gap-2 font-medium">
-                        <span>⚠️</span>
-                        <span x-text="pitchError"></span>
-                    </div>
-
-                    <form @submit.prevent="submitPitch()" class="space-y-5">
+                    <form @submit.prevent="submitPitch()" class="space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Research Area</label>
                             <select x-model="pitchForm.target_domain" required class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none text-sm">
@@ -513,15 +488,12 @@
                         </div>
 
                         <div>
-                            <div class="flex justify-between items-end mb-2">
-                                <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Your Pitch (Cover Letter)</label>
-                                <span class="text-xs text-slate-500" x-text="`${pitchForm.pitch_text.length}/1500 chars`"></span>
-                            </div>
-                            <textarea x-model="pitchForm.pitch_text" required maxlength="1500" rows="6" placeholder="Briefly explain your background, why you want to join this lab, and what specific value you bring (Max 1500 characters)..." class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none resize-none text-sm leading-relaxed"></textarea>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Your Pitch</label>
+                            <textarea x-model="pitchForm.pitch_text" required maxlength="1500" rows="6" placeholder="Briefly explain your background, why you want to join this lab, and what specific value you bring..." class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:outline-none resize-none text-sm leading-relaxed"></textarea>
                         </div>
 
-                        <button type="submit" :disabled="submittingPitch" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer">
-                            <span x-text="submittingPitch ? 'Submitting...' : 'Submit Expression of Interest →'"></span>
+                        <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer">
+                            Submit Expression of Interest →
                         </button>
                     </form>
                 </div>
@@ -531,34 +503,26 @@
 
 </div>
 
-<!-- Isolated Alpine.js Script Block -->
 <script>
 function professorFinderApp() {
     return {
-        activeTab: 'search', // 'search' or 'responses'
+        activeTab: 'search',
         professors: [],
+        vacancies: [],
         loading: true,
+        loadingVacancies: false,
         selectedProf: null,
+        selectedVacancy: null,
         showModal: false,
+        showPitchModal: false,
+        showApplyModal: false,
+        submittingApp: false,
         toastMessage: '',
         showToast: false,
-        showPitchModal: false,
-        pitchError: '',
-        pitchForm: {
-            target_domain: '',
-            pitch_text: ''
-        },
-        submittingPitch: false,
-        filters: {
-            search: '',
-            country: '',
-            institution: '',
-            department: '',
-            domain: '',
-            funding_only: false,
-            bookmarked_only: false,
-            pitched_only: false
-        },
+        pitchForm: { target_domain: '', pitch_text: '' },
+        applyForm: { cover_letter: '' },
+        selectedFiles: [],
+        filters: { search: '', country: '', institution: '', department: '', domain: '', funding_only: false, bookmarked_only: false, pitched_only: false },
 
         init() {
             this.fetchProfessors();
@@ -570,20 +534,13 @@ function professorFinderApp() {
 
         switchTab(tab) {
             this.activeTab = tab;
-            if (tab === 'responses') {
-                this.filters.pitched_only = true;
-                this.filters.bookmarked_only = false;
+            if(tab === 'rata') {
+                this.fetchVacancies();
             } else {
-                this.filters.pitched_only = false;
+                this.filters.pitched_only = (tab === 'responses');
+                this.filters.bookmarked_only = (tab === 'shortlist');
+                this.fetchProfessors();
             }
-            this.fetchProfessors();
-        },
-
-        toggleShortlist() {
-            this.activeTab = 'search';
-            this.filters.pitched_only = false;
-            this.filters.bookmarked_only = !this.filters.bookmarked_only;
-            this.fetchProfessors();
         },
 
         fetchProfessors() {
@@ -594,7 +551,6 @@ function professorFinderApp() {
             if (this.filters.institution) params.append('institution', this.filters.institution);
             if (this.filters.department) params.append('department', this.filters.department);
             if (this.filters.domain) params.append('domain', this.filters.domain);
-            if (this.filters.funding_only) params.append('funding_only', 'true');
             if (this.filters.bookmarked_only) params.append('bookmarked_only', 'true');
             if (this.filters.pitched_only) params.append('pitched_only', 'true');
 
@@ -605,22 +561,27 @@ function professorFinderApp() {
                     this.loading = false;
                 })
                 .catch(err => {
-                    console.error('Error loading professors:', err);
+                    console.error('Error:', err);
                     this.loading = false;
                 });
         },
 
+        fetchVacancies() {
+            this.loadingVacancies = true;
+            fetch('/student/api/vacancies')
+                .then(res => res.json())
+                .then(data => {
+                    this.vacancies = data.vacancies || [];
+                    this.loadingVacancies = false;
+                })
+                .catch(err => {
+                    console.error('Error fetching vacancies:', err);
+                    this.loadingVacancies = false;
+                });
+        },
+
         resetFilters() {
-            this.filters = {
-                search: '',
-                country: '',
-                institution: '',
-                department: '',
-                domain: '',
-                funding_only: false,
-                bookmarked_only: false,
-                pitched_only: this.activeTab === 'responses'
-            };
+            this.filters = { search: '', country: '', institution: '', department: '', domain: '', funding_only: false, bookmarked_only: false, pitched_only: false };
             this.fetchProfessors();
         },
 
@@ -630,71 +591,94 @@ function professorFinderApp() {
                 .then(data => {
                     if (data.status === 'success') {
                         prof.is_bookmarked = data.is_bookmarked;
-                        if (this.selectedProf && this.selectedProf.id === prof.id) {
-                            this.selectedProf.is_bookmarked = data.is_bookmarked;
-                        }
                         this.notify(data.message);
                     }
-                })
-                .catch(err => console.error('Bookmark error:', err));
-        },
-
-        openProfileModal(prof) {
-            this.selectedProf = prof;
-            this.showModal = true;
+                });
         },
 
         openPitchForm(prof) {
             this.selectedProf = prof;
-            this.pitchForm = { 
-                target_domain: prof.primary_domain || '', 
-                pitch_text: '' 
-            };
-            this.pitchError = '';
+            this.pitchForm = { target_domain: prof.primary_domain || '', pitch_text: '' };
             this.showPitchModal = true;
-            this.showModal = false;
         },
 
         submitPitch() {
-            this.pitchError = '';
-            if (!this.pitchForm.target_domain || !this.pitchForm.pitch_text) {
-                this.pitchError = 'Please select a research area and write your pitch.';
-                return;
-            }
-            this.submittingPitch = true;
             fetch(`/student/api/professors/pitch/${this.selectedProf.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(this.pitchForm)
             })
-            .then(async (res) => {
-                this.submittingPitch = false;
-                const contentType = res.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const data = await res.json();
-                    if (res.ok) {
-                        this.showPitchModal = false;
-                        
-                        if (data.pitch_info) {
-                            this.selectedProf.pitch_info = data.pitch_info;
-                            const targetInList = this.professors.find(p => p.id === this.selectedProf.id);
-                            if (targetInList) {
-                                targetInList.pitch_info = data.pitch_info;
-                            }
-                        }
-                        
-                        this.notify(data.message || 'Success!');
-                    } else {
-                        this.pitchError = data.error || 'Failed to submit pitch.';
-                    }
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    this.showPitchModal = false;
+                    this.notify(data.message);
+                    this.fetchProfessors();
                 } else {
-                    this.pitchError = 'Server returned an invalid response. Check console.';
+                    alert(data.error || 'Failed to submit pitch.');
+                }
+            });
+        },
+
+        openApplyModal(vacancy) {
+            this.selectedVacancy = vacancy;
+            this.applyForm = { cover_letter: '' };
+            this.selectedFiles = [];
+            this.showApplyModal = true;
+        },
+
+        handleFileSelection(event) {
+            const files = Array.from(event.target.files);
+            if (this.selectedFiles.length + files.length > 3) {
+                alert("You can only upload a maximum of 3 documents.");
+                return;
+            }
+            this.selectedFiles = [...this.selectedFiles, ...files].slice(0, 3);
+        },
+
+        removeFile(index) {
+            this.selectedFiles.splice(index, 1);
+        },
+
+        submitVacancyApplication() {
+            if (!this.applyForm.cover_letter.trim()) {
+                alert("Please provide a statement of interest or cover letter.");
+                return;
+            }
+
+            this.submittingApp = true;
+            let formData = new FormData();
+            formData.append('cover_letter', this.applyForm.cover_letter);
+            
+            for (let i = 0; i < this.selectedFiles.length; i++) {
+                formData.append('documents', this.selectedFiles[i]);
+            }
+
+            fetch(`/student/api/vacancies/apply/${this.selectedVacancy.id}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(async (res) => {
+                this.submittingApp = false;
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (jsonErr) {
+                    console.error("Non-JSON response from server:", jsonErr);
+                }
+
+                if (res.ok && data.status === 'success') {
+                    this.showApplyModal = false;
+                    this.notify(data.message || 'Application submitted successfully!');
+                    this.fetchVacancies();
+                } else {
+                    alert(data.error || `Failed to submit application (Error ${res.status}).`);
                 }
             })
-            .catch(err => {
-                this.submittingPitch = false;
-                this.pitchError = 'Network error occurred. Please try again.';
-                console.error(err);
+            .catch((err) => {
+                this.submittingApp = false;
+                console.error('Fetch error:', err);
+                alert('Network connection error. Check server terminal.');
             });
         },
 

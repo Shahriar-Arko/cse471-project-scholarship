@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from app.models.professor import Professor
 from app.models.pitch import ResearchPitch
 from app.models.user import User
+from app.models.vacancy import Vacancy, VacancyApplication
 
 professor_bp = Blueprint('professor', __name__, url_prefix='/professor')
 
@@ -29,13 +30,13 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc;">
             <div style="text-align: center; margin-bottom: 20px;">
                 <h2 style="color: #059669; margin: 0;">ScholarMatch Research Portal</h2>
-                <p style="color: #64748b; font-size: 13px;">Faculty Response to Research Expression of Interest</p>
+                <p style="color: #64748b; font-size: 13px;">Faculty Notification on Research Position</p>
             </div>
             
             <p style="color: #334155; font-size: 15px;">Dear <strong>{student_name}</strong>,</p>
             
             <p style="color: #334155; font-size: 15px; line-height: 1.6;">
-                <strong>Prof. {prof_name}</strong> has reviewed your research pitch and sent you the following direct message:
+                <strong>Prof. {prof_name}</strong> has updated the status of your research application or sent you a message:
             </p>
             
             <div style="background-color: #ffffff; padding: 18px; border-radius: 8px; border-left: 4px solid #059669; margin: 20px 0; color: #1e293b; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">
@@ -43,7 +44,7 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
             </div>
             
             <p style="color: #64748b; font-size: 13px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center;">
-                You can reply directly by logging into your ScholarMatch student dashboard.
+                You can review this decision in your ScholarMatch student dashboard under 'Apply for RA/TA'.
             </p>
         </div>
         """
@@ -62,22 +63,18 @@ def send_student_email_async(to_email, student_name, prof_name, subject, message
 @professor_bp.route('/profile/setup', methods=['GET', 'POST'])
 @login_required
 def setup_profile():
-    # Ensure only professors can access this
     if current_user.role != 'professor':
         return redirect(url_for('dashboard'))
 
     prof = Professor.objects(id=current_user.id).first()
 
     if request.method == 'POST':
-        # Update fields from the form
         prof.institution = request.form.get('institution', '').strip()
         prof.department = request.form.get('department', '').strip()
         prof.country = request.form.get('country', '').strip()
         prof.primary_domain = request.form.get('primary_domain', '').strip()
         prof.bio_summary = request.form.get('bio_summary', '').strip()
         prof.lab_name = request.form.get('lab_name', '').strip()
-        
-        # Checkboxes
         prof.accepting_students = 'accepting_students' in request.form
         prof.has_funding = 'has_funding' in request.form
         
@@ -94,9 +91,7 @@ def review_pipeline():
     if current_user.role != 'professor':
         return redirect(url_for('dashboard'))
 
-    # Fetch all pitches sent to this professor
     pitches = ResearchPitch.objects(professor=current_user.id).order_by('-created_at')
-    
     return render_template('dashboard/professor_pipeline.html', pitches=pitches)
 
 
@@ -124,7 +119,6 @@ def update_pitch_status(pitch_id):
 @professor_bp.route('/api/pitch/<pitch_id>/send-email', methods=['POST'])
 @login_required
 def send_email_to_student(pitch_id):
-    """API endpoint to dispatch email from professor to student."""
     if current_user.role != 'professor':
         return jsonify({'error': 'Unauthorized'}), 403
 
@@ -143,10 +137,183 @@ def send_email_to_student(pitch_id):
     if not subject or not body:
         return jsonify({'error': 'Subject and message body are required.'}), 400
 
-    # Trigger async email sender in background
     threading.Thread(
         target=send_student_email_async,
         args=(student.email, student.full_name, current_user.full_name, subject, body)
     ).start()
 
     return jsonify({'status': 'success', 'message': f'Email successfully sent to {student.email}!'})
+
+
+# =========================================================================
+# RESEARCH POSTINGS MANAGER (RA/TA VACANCIES & APPLICANT PIPELINE)
+# =========================================================================
+
+@professor_bp.route('/postings')
+@login_required
+def manage_postings():
+    """Renders the Research Postings Manager interface."""
+    if current_user.role != 'professor':
+        return redirect(url_for('dashboard'))
+
+    vacancies = Vacancy.objects(professor=current_user.id).order_by('-created_at')
+    
+    vacancy_list = []
+    for v in vacancies:
+        apps = VacancyApplication.objects(vacancy=v)
+        offered = apps.filter(status='Offered').count()
+        remaining = max(0, v.openings_count - offered)
+        
+        vacancy_list.append({
+            'vacancy': v,
+            'total_applicants': apps.count(),
+            'shortlisted_count': apps.filter(status='Shortlisted').count(),
+            'offered_count': offered,
+            'remaining_slots': remaining
+        })
+
+    return render_template('dashboard/professor_postings.html', vacancies_data=vacancy_list)
+
+
+@professor_bp.route('/api/postings/create', methods=['POST'])
+@login_required
+def create_posting():
+    """Creates a new funded RA/TA opening."""
+    if current_user.role != 'professor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    title = data.get('title', '').strip()
+    position_type = data.get('position_type', 'RA')
+    domain = data.get('domain', '').strip() or getattr(current_user, 'primary_domain', 'Computer Science')
+    department = data.get('department', '').strip() or getattr(current_user, 'department', 'General')
+    funding_stipend = data.get('funding_stipend', '').strip()
+    description = data.get('description', '').strip()
+    min_cgpa = float(data.get('min_cgpa', 3.0))
+    openings_count = int(data.get('openings_count', 1))
+    
+    skills_raw = data.get('required_skills', '')
+    required_skills = [s.strip() for s in skills_raw.split(',') if s.strip()] if isinstance(skills_raw, str) else skills_raw
+    target_degrees = data.get('target_degrees', ['Masters', 'PhD'])
+
+    if not title or not funding_stipend or not description:
+        return jsonify({'error': 'Title, funding stipend, and description are required.'}), 400
+
+    prof = Professor.objects(id=current_user.id).first()
+    new_vacancy = Vacancy(
+        professor=prof,
+        title=title,
+        position_type=position_type,
+        department=department,
+        domain=domain,
+        funding_stipend=funding_stipend,
+        openings_count=openings_count,
+        min_cgpa=min_cgpa,
+        target_degrees=target_degrees,
+        required_skills=required_skills,
+        description=description,
+        is_active=True
+    )
+    new_vacancy.save()
+
+    return jsonify({'status': 'success', 'message': 'New research opportunity published successfully!'})
+
+
+@professor_bp.route('/api/postings/<vacancy_id>/toggle', methods=['POST'])
+@login_required
+def toggle_vacancy_status(vacancy_id):
+    if current_user.role != 'professor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    vacancy = Vacancy.objects(id=vacancy_id, professor=current_user.id).first()
+    if not vacancy:
+        return jsonify({'error': 'Posting not found.'}), 404
+
+    vacancy.is_active = not vacancy.is_active
+    vacancy.save()
+    return jsonify({
+        'status': 'success',
+        'is_active': vacancy.is_active,
+        'message': f"Posting is now {'Active' if vacancy.is_active else 'Paused'}."
+    })
+
+
+@professor_bp.route('/api/postings/<vacancy_id>/delete', methods=['POST'])
+@login_required
+def delete_vacancy(vacancy_id):
+    if current_user.role != 'professor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    vacancy = Vacancy.objects(id=vacancy_id, professor=current_user.id).first()
+    if not vacancy:
+        return jsonify({'error': 'Posting not found.'}), 404
+
+    vacancy.delete()
+    return jsonify({'status': 'success', 'message': 'Posting deleted successfully.'})
+
+
+@professor_bp.route('/api/postings/<vacancy_id>/applicants', methods=['GET'])
+@login_required
+def get_vacancy_applicants(vacancy_id):
+    """Fetches all student applicants including uploaded documents."""
+    if current_user.role != 'professor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    vacancy = Vacancy.objects(id=vacancy_id, professor=current_user.id).first()
+    if not vacancy:
+        return jsonify({'error': 'Posting not found.'}), 404
+
+    applications = VacancyApplication.objects(vacancy=vacancy).order_by('-created_at')
+    
+    results = []
+    for app in applications:
+        student = app.student
+        results.append({
+            'id': str(app.id),
+            'student_id': str(student.id) if student else '',
+            'student_name': student.full_name if student else 'Anonymous Student',
+            'student_email': student.email if student else '',
+            'avatar_url': getattr(student, 'avatar_url', None),
+            'applicant_cgpa': app.applicant_cgpa or (student.gpa if student and hasattr(student, 'gpa') else 'N/A'),
+            'applicant_major': app.applicant_major or (student.major if student and hasattr(student, 'major') else 'N/A'),
+            'applicant_degree': app.applicant_degree or (student.degree_level if student and hasattr(student, 'degree_level') else 'Masters'),
+            'cover_letter': app.cover_letter,
+            'documents': app.documents or [],
+            'status': app.status,
+            'applied_at': app.created_at.strftime('%b %d, %Y')
+        })
+
+    return jsonify({'status': 'success', 'vacancy_title': vacancy.title, 'applicants': results})
+
+
+@professor_bp.route('/api/applications/<application_id>/status', methods=['POST'])
+@login_required
+def update_application_status(application_id):
+    """Updates applicant status and sends email notification."""
+    if current_user.role != 'professor':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    application = VacancyApplication.objects(id=application_id, professor=current_user.id).first()
+    if not application:
+        return jsonify({'error': 'Application not found.'}), 404
+
+    data = request.get_json() or {}
+    new_status = data.get('status')
+    valid_statuses = ['Submitted', 'Under Review', 'Shortlisted', 'Offered', 'Rejected']
+
+    if new_status not in valid_statuses:
+        return jsonify({'error': 'Invalid status provided.'}), 400
+
+    application.status = new_status
+    application.save()
+
+    # Async notification email if shortlisted or offered
+    student = application.student
+    if student and student.email and new_status in ['Shortlisted', 'Offered']:
+        msg_body = f"Congratulations {student.full_name},\n\nProf. {current_user.full_name} has moved your application for '{application.vacancy.title}' to the status: '{new_status}'.\n\nPlease log in to your ScholarMatch student dashboard to review details."
+        threading.Thread(
+            target=send_student_email_async,
+            args=(student.email, student.full_name, current_user.full_name, f"Update on Position: {application.vacancy.title}", msg_body)
+        ).start()
+
+    return jsonify({'status': 'success', 'message': f'Applicant status updated to {new_status}.'})

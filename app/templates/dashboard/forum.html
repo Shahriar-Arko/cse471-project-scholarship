@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Community & Peer Forum - ScholarMatch{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[#0B1120] text-slate-100 p-6 lg:p-8 relative overflow-hidden" x-data="forumApp()">
+
+    <!-- Ambient Glows -->
+    <div class="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+    <!-- Header Navigation -->
+    <div class="max-w-7xl mx-auto mb-8 border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+        <div>
+            <h1 class="text-3xl font-extrabold text-white flex items-center gap-3">
+                <span class="text-purple-400">💬</span> Community Q&A Forum
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">Share advice, ask questions, and connect with peers and verified faculty.</p>
+        </div>
+        <button @click="showModal = true" class="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all cursor-pointer">
+            + Ask a Question
+        </button>
+    </div>
+
+    <!-- Feed Layout -->
+    <div class="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-12 gap-8 relative z-10">
+        
+        <!-- Sidebar Taxonomies -->
+        <aside class="xl:col-span-3 space-y-2">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 px-3">Filter by Topic</h3>
+            <a href="?category=" class="block px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-medium transition-all">🌐 All Discussions</a>
+            <a href="?category=Visa Queries" class="block px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-medium transition-all">🛂 Visa Queries</a>
+            <a href="?category=Scholarship Advice" class="block px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-medium transition-all">🎓 Scholarship Advice</a>
+            <a href="?category=Document Attestation" class="block px-4 py-2.5 rounded-xl bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-medium transition-all">📑 Document Attestation</a>
+        </aside>
+
+        <!-- Main Feed -->
+        <div class="xl:col-span-9 space-y-4">
+            {% if not posts %}
+            <div class="text-center py-20 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                <h3 class="text-lg font-bold text-white mb-2">No Discussions Yet</h3>
+                <p class="text-slate-400 text-sm">Be the first to ask a question or start a conversation.</p>
+            </div>
+            {% else %}
+                {% for post in posts %}
+                <div class="bg-slate-900/70 border border-slate-800 hover:border-slate-600 rounded-3xl p-6 shadow-xl backdrop-blur-xl transition-all"
+                     x-data="{ upvotes: {{ post.upvotes|length }}, isUpvoted: {{ 'true' if current_user.id in post.upvotes else 'false' }} }">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-[10px] font-bold px-2 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg mb-2 inline-block uppercase">{{ post.category_tag }}</span>
+                            
+                            <!-- MADE THE TITLE CLICKABLE -->
+                            <a href="{{ url_for('forum.view_post', post_id=post.id) }}" class="block hover:underline text-white">
+                                <h2 class="text-xl font-bold mb-1">{{ post.title }}</h2>
+                            </a>
+                            
+                            <p class="text-sm text-slate-400 mb-4 line-clamp-2">{{ post.content }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- UPDATED FOOTER WITH COMMENT BUTTON -->
+                    <div class="flex items-center gap-5 text-xs font-semibold text-slate-500 border-t border-slate-800/80 pt-4">
+                        <span>👤 {{ post.author.full_name }}</span>
+                        <span>👁️ {{ post.view_count }} Views</span>
+                        
+                        <!-- UPVOTE BUTTON (Disabled for Author) -->
+                        {% if post.author.id == current_user.id %}
+                            <button disabled class="flex items-center gap-1.5 text-slate-600 cursor-not-allowed" title="You cannot upvote your own post">
+                                <span>👍</span> <span>{{ post.upvotes|length }}</span> Upvotes
+                            </button>
+                        {% else %}
+                            <button @click="
+                                    fetch('/forum/api/upvote/{{ post.id }}', {method: 'POST'})
+                                    .then(r => r.json())
+                                    .then(d => { 
+                                        if(d.status === 'success') {
+                                            upvotes = d.upvote_count; 
+                                            isUpvoted = d.action === 'added'; 
+                                        } else {
+                                            alert(d.error);
+                                        }
+                                    })
+                                " 
+                                class="flex items-center gap-1.5 cursor-pointer transition-colors"
+                                :class="isUpvoted ? 'text-purple-400' : 'hover:text-slate-300'">
+                                <span>👍</span> <span x-text="upvotes"></span> Upvotes
+                            </button>
+                        {% endif %}
+
+                        <!-- NEW COMMENT BUTTON -->
+                        <a href="{{ url_for('forum.view_post', post_id=post.id) }}" class="flex items-center gap-1.5 hover:text-purple-400 transition-colors ml-2 cursor-pointer">
+                            <span>💬</span> 
+                            <span>{{ post.comment_count|default(0) }} Comments</span>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+<!-- ==================== NEW POST MODAL (CLEAN VERSION) ==================== -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4" x-transition.opacity>
+        <div @click.away="showModal = false" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl p-8 relative" x-transition.scale>
+            <button @click="showModal = false" class="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">✕</button>
+
+            <h2 class="text-2xl font-black text-white mb-1">Start a Discussion</h2>
+            <p class="text-sm text-slate-400 mb-6">Ask a question or share advice with the community.</p>
+
+            <form @submit.prevent="submitPost()" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category</label>
+                    <select x-model="form.category" class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none text-sm">
+                        <option value="General Advice">General Advice</option>
+                        <option value="Visa Queries">Visa Queries</option>
+                        <option value="Scholarship Advice">Scholarship Advice</option>
+                        <option value="Document Attestation">Document Attestation</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Question or Topic Title</label>
+                    <!-- Removed the @input.debounce trigger -->
+                    <input type="text" x-model="form.title" required placeholder="e.g. How long does the APS certificate take for Germany?" class="w-full bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 focus:outline-none text-sm">
+                </div>
+
+                <!-- Removed the Duplicate Warning Area entirely -->
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Details</label>
+                    <!-- Removed the @input.debounce trigger -->
+                    <textarea x-model="form.content" required rows="5" placeholder="Provide context or details..." class="w-full bg-black/40 border border-slate-700 rounded-xl p-4 text-white focus:border-purple-500 focus:outline-none resize-none text-sm leading-relaxed"></textarea>
+                </div>
+
+                <button type="submit" :disabled="isSubmitting" class="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold shadow-lg shadow-purple-500/20 transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50">
+                    <span x-text="isSubmitting ? 'Publishing...' : 'Publish Discussion →'"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function forumApp() {
+    return {
+        showModal: false,
+        isSubmitting: false,
+        form: {
+            title: '',
+            content: '',
+            category: 'General Advice'
+        },
+
+        async submitPost() {
+            this.isSubmitting = true;
+            try {
+                const res = await fetch('/forum/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.form)
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network Error.');
+            } finally {
+                this.isSubmitting = false;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -56,6 +56,9 @@ def create_app(config_name='development'):
     # ... inside your create_app() function ...
     app.register_blueprint(professor_bp)
 
+    from app.routes.forum_routes import forum_bp
+    app.register_blueprint(forum_bp)
+
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
