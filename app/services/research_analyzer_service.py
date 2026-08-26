@@ -1,6 +1,6 @@
 import os
 import math
-import requests
+from google import genai
 from app.models.research_taxonomy import ResearchTaxonomy
 from app.models.professor import Professor
 from app.models.scholarship import Scholarship
@@ -8,26 +8,29 @@ from app.models.scholarship import Scholarship
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 def get_gemini_embedding(text):
-    """Generates 768-D query vector using Google's gemini-embedding-001."""
+    """Generates 768-D query vector using the new google-genai SDK."""
     if not GEMINI_API_KEY or not text:
         return []
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key={GEMINI_API_KEY}"
-    payload = {
-        "model": "models/gemini-embedding-001",
-        "content": {"parts": [{"text": text[:3000]}]},
-        "outputDimensionality": 768
-    }
-
     try:
-        response = requests.post(url, json=payload, timeout=12)
-        if response.status_code == 200:
-            return response.json().get("embedding", {}).get("values", [])
-        else:
-            print(f"[GEMINI EMBEDDING ERROR] Status {response.status_code}: {response.text}")
+        # Initialize the client using the new SDK structure
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Generate the embedding
+        response = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text[:3000]
+        )
+        
+        # Extract the numerical values from the new response object
+        return response.embeddings[0].values
+        
     except Exception as e:
         print(f"[GEMINI EMBEDDING ERROR]: {e}")
-    return []
+        return []
+
+# --- KEEP ALL YOUR OTHER FUNCTIONS BELOW THIS LINE EXACTLY THE SAME ---
+# (cosine_similarity, vector_search_taxonomies, match_professors_by_vector, etc.)
 
 def cosine_similarity(vec1, vec2):
     """Calculates cosine similarity between two 768-D vectors."""

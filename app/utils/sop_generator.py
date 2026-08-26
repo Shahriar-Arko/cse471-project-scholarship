@@ -153,7 +153,7 @@ Draft a realistic, highly tailored Statement of Purpose document for a student a
             {"role": "system", "content": system_instruction},
             {"role": "user", "content": user_prompt}
         ],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         temperature=0.65,
         max_tokens=2048
     )
