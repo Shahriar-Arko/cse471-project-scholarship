@@ -9,7 +9,7 @@ def get_text_embedding(text):
     if not gemini_client or not text:
         return []
     
-    candidate_models = ["models/text-embedding-004", "models/embedding-001"]
+    candidate_models = ["models/embedding-001"]
     
     for model_name in candidate_models:
         try:

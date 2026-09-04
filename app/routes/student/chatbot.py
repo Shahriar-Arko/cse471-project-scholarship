@@ -66,7 +66,7 @@ def chat_api():
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
                 ],
-                model="llama-3.3-70b-versatile",
+                model="openai/gpt-oss-20b",
                 temperature=0.7,
                 max_tokens=1024,
                 stream=True
